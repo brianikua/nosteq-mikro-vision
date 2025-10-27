@@ -12,6 +12,21 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const deviceSchema = z.object({
+  name: z.string().trim().min(1, "Device name is required").max(100, "Device name must be less than 100 characters"),
+  ip_address: z.string().trim().refine((ip) => {
+    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const ipv6Regex = /^(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}$/;
+    return ipv4Regex.test(ip) || ipv6Regex.test(ip);
+  }, "Invalid IP address format"),
+  username: z.string().trim().min(1, "Username is required").max(50, "Username must be less than 50 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(100, "Password must be less than 100 characters"),
+  port: z.number().int().min(1, "Port must be between 1 and 65535").max(65535, "Port must be between 1 and 65535"),
+  model: z.string().max(100, "Model must be less than 100 characters").default(""),
+  routeros_version: z.string().max(20, "RouterOS version must be less than 20 characters").default(""),
+});
 
 interface AddDeviceDialogProps {
   open: boolean;
@@ -35,7 +50,18 @@ export const AddDeviceDialog = ({ open, onOpenChange }: AddDeviceDialogProps) =>
     setLoading(true);
 
     try {
-      const { error } = await supabase.from("devices").insert([formData]);
+      // Validate input
+      const validatedData = deviceSchema.parse(formData);
+
+      const { error } = await supabase.from("devices").insert([{
+        name: validatedData.name,
+        ip_address: validatedData.ip_address,
+        username: validatedData.username,
+        password: validatedData.password,
+        port: validatedData.port,
+        model: validatedData.model || null,
+        routeros_version: validatedData.routeros_version || null,
+      }]);
 
       if (error) throw error;
 
@@ -52,7 +78,13 @@ export const AddDeviceDialog = ({ open, onOpenChange }: AddDeviceDialogProps) =>
       });
       window.location.reload();
     } catch (error: any) {
-      toast.error(error.message || "Failed to add device");
+      if (error instanceof z.ZodError) {
+        const firstError = error.errors[0];
+        toast.error(firstError.message);
+      } else {
+        console.error('Device creation failed:', error);
+        toast.error("Unable to add device. Please check your input and try again.");
+      }
     } finally {
       setLoading(false);
     }
