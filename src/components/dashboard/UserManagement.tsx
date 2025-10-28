@@ -79,7 +79,7 @@ export function UserManagement() {
     }
   };
 
-  const handleToggleRole = async (userId: string, role: "admin" | "viewer", hasRole: boolean) => {
+  const handleToggleRole = async (userId: string, role: "admin" | "viewer" | "superadmin", hasRole: boolean) => {
     try {
       if (hasRole) {
         // Remove role
@@ -183,6 +183,18 @@ export function UserManagement() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleRole(user.id, "superadmin", user.roles.includes("superadmin"))}
+                            >
+                              {user.roles.includes("superadmin") ? (
+                                <UserMinus className="h-4 w-4 mr-1" />
+                              ) : (
+                                <UserPlus className="h-4 w-4 mr-1" />
+                              )}
+                              Superadmin
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
