@@ -2,17 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Plus, LogOut, Activity, Users } from "lucide-react";
-import { DeviceGrid } from "@/components/dashboard/DeviceGrid";
-import { AddDeviceDialog } from "@/components/dashboard/AddDeviceDialog";
-import { toast } from "sonner";
+import { LogOut, Activity, ArrowLeft } from "lucide-react";
+import { UserManagement } from "@/components/dashboard/UserManagement";
 
-const Dashboard = () => {
+const Users = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [showAddDevice, setShowAddDevice] = useState(false);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -36,23 +31,6 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  useEffect(() => {
-    if (!autoRefreshEnabled) return;
-
-    const interval = setInterval(() => {
-      handleRefresh();
-    }, 5 * 60 * 1000); // 5 minutes
-
-    return () => clearInterval(interval);
-  }, [autoRefreshEnabled]);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    toast.info("Refreshing device status...");
-    // Trigger refresh logic here (will be handled by DeviceGrid)
-    setTimeout(() => setRefreshing(false), 1000);
-  };
-
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -69,34 +47,17 @@ const Dashboard = () => {
               <Activity className="h-8 w-8 text-primary" />
               <div>
                 <h1 className="text-2xl font-bold">Nosteq Networks</h1>
-                <p className="text-sm text-muted-foreground">MikroTik Monitoring Dashboard</p>
+                <p className="text-sm text-muted-foreground">User Management</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleRefresh}
-                disabled={refreshing}
+                onClick={() => navigate("/dashboard")}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setShowAddDevice(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Device
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate("/users")}
-              >
-                <Users className="h-4 w-4 mr-2" />
-                Users
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
               </Button>
               <Button
                 variant="ghost"
@@ -112,15 +73,10 @@ const Dashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <DeviceGrid refreshTrigger={refreshing} />
+        <UserManagement />
       </main>
-
-      <AddDeviceDialog 
-        open={showAddDevice} 
-        onOpenChange={setShowAddDevice}
-      />
     </div>
   );
 };
 
-export default Dashboard;
+export default Users;
