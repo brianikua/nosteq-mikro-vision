@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, Plus, LogOut, Activity } from "lucide-react";
 import { DeviceGrid } from "@/components/dashboard/DeviceGrid";
 import { AddDeviceDialog } from "@/components/dashboard/AddDeviceDialog";
+import { UserManagement } from "@/components/dashboard/UserManagement";
 import { toast } from "sonner";
 
 const Dashboard = () => {
@@ -103,8 +104,9 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 space-y-8">
         <DeviceGrid refreshTrigger={refreshing} />
+        <UserManagement />
       </main>
 
       <AddDeviceDialog 
