@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Plus, LogOut, Activity, Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RefreshCw, Plus, LogOut, Activity, Users, Shield } from "lucide-react";
 import { DeviceGrid } from "@/components/dashboard/DeviceGrid";
 import { AddDeviceDialog } from "@/components/dashboard/AddDeviceDialog";
+import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
 import { toast } from "sonner";
 
 const Dashboard = () => {
@@ -38,18 +40,15 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!autoRefreshEnabled) return;
-
     const interval = setInterval(() => {
       handleRefresh();
-    }, 5 * 60 * 1000); // 5 minutes
-
+    }, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [autoRefreshEnabled]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     toast.info("Refreshing device status...");
-    // Trigger refresh logic here (will be handled by DeviceGrid)
     setTimeout(() => setRefreshing(false), 1000);
   };
 
@@ -73,36 +72,19 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={refreshing}
-              >
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setShowAddDevice(true)}
-              >
+              <Button variant="default" size="sm" onClick={() => setShowAddDevice(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Device
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate("/users")}
-              >
+              <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
                 <Users className="h-4 w-4 mr-2" />
                 Users
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSignOut}
-              >
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
@@ -112,13 +94,27 @@ const Dashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <DeviceGrid refreshTrigger={refreshing} />
+        <Tabs defaultValue="devices" className="space-y-6">
+          <TabsList className="bg-card border border-border/50">
+            <TabsTrigger value="devices" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" /> Devices
+            </TabsTrigger>
+            <TabsTrigger value="ip-reputation" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" /> IP Reputation
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="devices">
+            <DeviceGrid refreshTrigger={refreshing} />
+          </TabsContent>
+
+          <TabsContent value="ip-reputation">
+            <IPReputationTab />
+          </TabsContent>
+        </Tabs>
       </main>
 
-      <AddDeviceDialog 
-        open={showAddDevice} 
-        onOpenChange={setShowAddDevice}
-      />
+      <AddDeviceDialog open={showAddDevice} onOpenChange={setShowAddDevice} />
     </div>
   );
 };

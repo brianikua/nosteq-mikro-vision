@@ -14,6 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      abuse_attributions: {
+        Row: {
+          abuse_category: Database["public"]["Enums"]["abuse_category"]
+          attributed_at: string
+          device_id: string
+          evidence: Json | null
+          id: string
+          pppoe_username: string | null
+          private_ip: string | null
+          scan_id: string
+          severity_score: number
+        }
+        Insert: {
+          abuse_category: Database["public"]["Enums"]["abuse_category"]
+          attributed_at?: string
+          device_id: string
+          evidence?: Json | null
+          id?: string
+          pppoe_username?: string | null
+          private_ip?: string | null
+          scan_id: string
+          severity_score?: number
+        }
+        Update: {
+          abuse_category?: Database["public"]["Enums"]["abuse_category"]
+          attributed_at?: string
+          device_id?: string
+          evidence?: Json | null
+          id?: string
+          pppoe_username?: string | null
+          private_ip?: string | null
+          scan_id?: string
+          severity_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abuse_attributions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abuse_attributions_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "blacklist_scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blacklist_scans: {
+        Row: {
+          abuse_category: Database["public"]["Enums"]["abuse_category"] | null
+          confidence_score: number | null
+          device_id: string
+          expires_at: string | null
+          id: string
+          ip_address: string
+          provider: string
+          raw_response: Json | null
+          scanned_at: string
+          status: Database["public"]["Enums"]["scan_status"]
+        }
+        Insert: {
+          abuse_category?: Database["public"]["Enums"]["abuse_category"] | null
+          confidence_score?: number | null
+          device_id: string
+          expires_at?: string | null
+          id?: string
+          ip_address: string
+          provider: string
+          raw_response?: Json | null
+          scanned_at?: string
+          status?: Database["public"]["Enums"]["scan_status"]
+        }
+        Update: {
+          abuse_category?: Database["public"]["Enums"]["abuse_category"] | null
+          confidence_score?: number | null
+          device_id?: string
+          expires_at?: string | null
+          id?: string
+          ip_address?: string
+          provider?: string
+          raw_response?: Json | null
+          scanned_at?: string
+          status?: Database["public"]["Enums"]["scan_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blacklist_scans_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_interfaces: {
         Row: {
           device_id: string
@@ -132,6 +230,133 @@ export type Database = {
         }
         Relationships: []
       }
+      ip_history: {
+        Row: {
+          detected_at: string
+          device_id: string
+          id: string
+          ip_address: string
+          is_current: boolean
+          source: string
+        }
+        Insert: {
+          detected_at?: string
+          device_id: string
+          id?: string
+          ip_address: string
+          is_current?: boolean
+          source?: string
+        }
+        Update: {
+          detected_at?: string
+          device_id?: string
+          id?: string
+          ip_address?: string
+          is_current?: boolean
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ip_history_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ip_reputation_summary: {
+        Row: {
+          active_listings: number
+          device_id: string
+          id: string
+          ip_address: string
+          last_scan_at: string | null
+          reputation_score: number
+          total_listings: number
+          updated_at: string
+        }
+        Insert: {
+          active_listings?: number
+          device_id: string
+          id?: string
+          ip_address: string
+          last_scan_at?: string | null
+          reputation_score?: number
+          total_listings?: number
+          updated_at?: string
+        }
+        Update: {
+          active_listings?: number
+          device_id?: string
+          id?: string
+          ip_address?: string
+          last_scan_at?: string | null
+          reputation_score?: number
+          total_listings?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ip_reputation_summary_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: true
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mitigation_actions: {
+        Row: {
+          action_type: Database["public"]["Enums"]["mitigation_type"]
+          approved_by: string | null
+          attribution_id: string | null
+          created_at: string
+          description: string
+          device_id: string
+          executed_at: string | null
+          id: string
+          is_approved: boolean
+        }
+        Insert: {
+          action_type: Database["public"]["Enums"]["mitigation_type"]
+          approved_by?: string | null
+          attribution_id?: string | null
+          created_at?: string
+          description: string
+          device_id: string
+          executed_at?: string | null
+          id?: string
+          is_approved?: boolean
+        }
+        Update: {
+          action_type?: Database["public"]["Enums"]["mitigation_type"]
+          approved_by?: string | null
+          attribution_id?: string | null
+          created_at?: string
+          description?: string
+          device_id?: string
+          executed_at?: string | null
+          id?: string
+          is_approved?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mitigation_actions_attribution_id_fkey"
+            columns: ["attribution_id"]
+            isOneToOne: false
+            referencedRelation: "abuse_attributions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mitigation_actions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -167,8 +392,26 @@ export type Database = {
       }
     }
     Enums: {
+      abuse_category:
+        | "spam"
+        | "ddos"
+        | "port_scanning"
+        | "botnet"
+        | "malware"
+        | "open_relay"
+        | "brute_force"
+        | "dns_amplification"
+        | "smtp_abuse"
+        | "other"
       app_role: "admin" | "viewer" | "superadmin"
       device_status: "online" | "offline" | "warning"
+      mitigation_type:
+        | "firewall_rule"
+        | "rate_limit"
+        | "port_block"
+        | "customer_suspension"
+        | "manual_review"
+      scan_status: "clean" | "listed" | "error"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -296,8 +539,28 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      abuse_category: [
+        "spam",
+        "ddos",
+        "port_scanning",
+        "botnet",
+        "malware",
+        "open_relay",
+        "brute_force",
+        "dns_amplification",
+        "smtp_abuse",
+        "other",
+      ],
       app_role: ["admin", "viewer", "superadmin"],
       device_status: ["online", "offline", "warning"],
+      mitigation_type: [
+        "firewall_rule",
+        "rate_limit",
+        "port_block",
+        "customer_suspension",
+        "manual_review",
+      ],
+      scan_status: ["clean", "listed", "error"],
     },
   },
 } as const
