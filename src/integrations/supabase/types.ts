@@ -112,6 +112,50 @@ export type Database = {
           },
         ]
       }
+      connection_tracking: {
+        Row: {
+          collected_at: string
+          device_id: string
+          icmp_connections: number | null
+          id: string
+          tcp_connections: number | null
+          top_destinations: Json | null
+          top_sources: Json | null
+          total_connections: number
+          udp_connections: number | null
+        }
+        Insert: {
+          collected_at?: string
+          device_id: string
+          icmp_connections?: number | null
+          id?: string
+          tcp_connections?: number | null
+          top_destinations?: Json | null
+          top_sources?: Json | null
+          total_connections?: number
+          udp_connections?: number | null
+        }
+        Update: {
+          collected_at?: string
+          device_id?: string
+          icmp_connections?: number | null
+          id?: string
+          tcp_connections?: number | null
+          top_destinations?: Json | null
+          top_sources?: Json | null
+          total_connections?: number
+          udp_connections?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connection_tracking_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_interfaces: {
         Row: {
           device_id: string
@@ -229,6 +273,133 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      firewall_logs: {
+        Row: {
+          action: string | null
+          chain: string | null
+          collected_at: string
+          device_id: string
+          dst_address: string | null
+          dst_port: string | null
+          id: string
+          in_interface: string | null
+          log_message: string | null
+          out_interface: string | null
+          protocol: string | null
+          src_address: string | null
+          timestamp: string
+        }
+        Insert: {
+          action?: string | null
+          chain?: string | null
+          collected_at?: string
+          device_id: string
+          dst_address?: string | null
+          dst_port?: string | null
+          id?: string
+          in_interface?: string | null
+          log_message?: string | null
+          out_interface?: string | null
+          protocol?: string | null
+          src_address?: string | null
+          timestamp?: string
+        }
+        Update: {
+          action?: string | null
+          chain?: string | null
+          collected_at?: string
+          device_id?: string
+          dst_address?: string | null
+          dst_port?: string | null
+          id?: string
+          in_interface?: string | null
+          log_message?: string | null
+          out_interface?: string | null
+          protocol?: string | null
+          src_address?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "firewall_logs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      firewall_rules: {
+        Row: {
+          action: string
+          bytes: number | null
+          chain: string
+          collected_at: string
+          comment: string | null
+          device_id: string
+          disabled: boolean
+          dst_address: string | null
+          dst_port: string | null
+          id: string
+          in_interface: string | null
+          mikrotik_id: string | null
+          out_interface: string | null
+          packets: number | null
+          protocol: string | null
+          rule_order: number | null
+          src_address: string | null
+          src_port: string | null
+        }
+        Insert: {
+          action: string
+          bytes?: number | null
+          chain: string
+          collected_at?: string
+          comment?: string | null
+          device_id: string
+          disabled?: boolean
+          dst_address?: string | null
+          dst_port?: string | null
+          id?: string
+          in_interface?: string | null
+          mikrotik_id?: string | null
+          out_interface?: string | null
+          packets?: number | null
+          protocol?: string | null
+          rule_order?: number | null
+          src_address?: string | null
+          src_port?: string | null
+        }
+        Update: {
+          action?: string
+          bytes?: number | null
+          chain?: string
+          collected_at?: string
+          comment?: string | null
+          device_id?: string
+          disabled?: boolean
+          dst_address?: string | null
+          dst_port?: string | null
+          id?: string
+          in_interface?: string | null
+          mikrotik_id?: string | null
+          out_interface?: string | null
+          packets?: number | null
+          protocol?: string | null
+          rule_order?: number | null
+          src_address?: string | null
+          src_port?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "firewall_rules_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ip_history: {
         Row: {
@@ -350,6 +521,83 @@ export type Database = {
           },
           {
             foreignKeyName: "mitigation_actions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nat_rules: {
+        Row: {
+          action: string
+          bytes: number | null
+          chain: string
+          collected_at: string
+          comment: string | null
+          device_id: string
+          disabled: boolean
+          dst_address: string | null
+          dst_port: string | null
+          id: string
+          in_interface: string | null
+          mikrotik_id: string | null
+          out_interface: string | null
+          packets: number | null
+          protocol: string | null
+          rule_order: number | null
+          src_address: string | null
+          src_port: string | null
+          to_addresses: string | null
+          to_ports: string | null
+        }
+        Insert: {
+          action: string
+          bytes?: number | null
+          chain: string
+          collected_at?: string
+          comment?: string | null
+          device_id: string
+          disabled?: boolean
+          dst_address?: string | null
+          dst_port?: string | null
+          id?: string
+          in_interface?: string | null
+          mikrotik_id?: string | null
+          out_interface?: string | null
+          packets?: number | null
+          protocol?: string | null
+          rule_order?: number | null
+          src_address?: string | null
+          src_port?: string | null
+          to_addresses?: string | null
+          to_ports?: string | null
+        }
+        Update: {
+          action?: string
+          bytes?: number | null
+          chain?: string
+          collected_at?: string
+          comment?: string | null
+          device_id?: string
+          disabled?: boolean
+          dst_address?: string | null
+          dst_port?: string | null
+          id?: string
+          in_interface?: string | null
+          mikrotik_id?: string | null
+          out_interface?: string | null
+          packets?: number | null
+          protocol?: string | null
+          rule_order?: number | null
+          src_address?: string | null
+          src_port?: string | null
+          to_addresses?: string | null
+          to_ports?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nat_rules_device_id_fkey"
             columns: ["device_id"]
             isOneToOne: false
             referencedRelation: "devices"

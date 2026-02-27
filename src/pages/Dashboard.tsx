@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Activity, Users, Shield } from "lucide-react";
+import { RefreshCw, Plus, LogOut, Activity, Users, Shield, Flame } from "lucide-react";
 import { DeviceGrid } from "@/components/dashboard/DeviceGrid";
 import { AddDeviceDialog } from "@/components/dashboard/AddDeviceDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
+import { FirewallNATTab } from "@/components/dashboard/FirewallNATTab";
 import { toast } from "sonner";
 
 const Dashboard = () => {
@@ -99,6 +100,9 @@ const Dashboard = () => {
             <TabsTrigger value="devices" className="flex items-center gap-2">
               <Activity className="h-4 w-4" /> Devices
             </TabsTrigger>
+            <TabsTrigger value="firewall" className="flex items-center gap-2">
+              <Flame className="h-4 w-4" /> Firewall & NAT
+            </TabsTrigger>
             <TabsTrigger value="ip-reputation" className="flex items-center gap-2">
               <Shield className="h-4 w-4" /> IP Reputation
             </TabsTrigger>
@@ -106,6 +110,10 @@ const Dashboard = () => {
 
           <TabsContent value="devices">
             <DeviceGrid refreshTrigger={refreshing} />
+          </TabsContent>
+
+          <TabsContent value="firewall">
+            <FirewallNATTab />
           </TabsContent>
 
           <TabsContent value="ip-reputation">
