@@ -9,6 +9,8 @@ interface Device {
   ip_address: string;
   model: string | null;
   routeros_version: string | null;
+  port: number;
+  username: string;
 }
 
 interface DeviceMetrics {
