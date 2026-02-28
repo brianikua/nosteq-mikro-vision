@@ -11,7 +11,7 @@ import { z } from "zod";
 
 const authSchema = z.object({
   email: z.string().email("Invalid email address").max(255, "Email must be less than 255 characters"),
-  password: z.string().min(12, "Password must be at least 12 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 const Auth = () => {
