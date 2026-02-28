@@ -1,7 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Cpu, HardDrive, Network, Clock, Trash2, Wifi } from "lucide-react";
+import { Activity, Cpu, HardDrive, Network, Clock, Trash2, Wifi, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -13,6 +16,8 @@ interface DeviceCardProps {
     ip_address: string;
     model: string | null;
     routeros_version: string | null;
+    port?: number;
+    username?: string;
     metrics: {
       status: "online" | "offline" | "warning";
       uptime: string | null;
@@ -26,6 +31,15 @@ interface DeviceCardProps {
 export const DeviceCard = ({ device }: DeviceCardProps) => {
   const [pinging, setPinging] = useState(false);
   const [pingResult, setPingResult] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: device.name,
+    ip_address: device.ip_address,
+    username: device.username || "",
+    password: "",
+    port: device.port || 8728,
+  });
   const status = device.metrics?.status || "offline";
   
   const statusColors = {
@@ -57,6 +71,36 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
       toast.error("Ping failed");
     } finally {
       setPinging(false);
+    }
+  };
+
+  const handleEdit = async () => {
+    setSaving(true);
+    try {
+      const updateData: Record<string, unknown> = {
+        name: editForm.name,
+        ip_address: editForm.ip_address,
+        username: editForm.username,
+        port: editForm.port,
+      };
+      if (editForm.password) {
+        updateData.password = editForm.password;
+      }
+
+      const { error } = await supabase
+        .from("devices")
+        .update(updateData)
+        .eq("id", device.id);
+
+      if (error) throw error;
+      toast.success("Device updated successfully");
+      setEditOpen(false);
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating device:", error);
+      toast.error("Failed to update device");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -100,6 +144,53 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
             >
               <Wifi className={`h-4 w-4 ${pinging ? "animate-pulse" : ""}`} />
             </Button>
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+                  title="Edit device"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Device</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-name">Device Name</Label>
+                    <Input id="edit-name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-ip">IP Address</Label>
+                    <Input id="edit-ip" value={editForm.ip_address} onChange={(e) => setEditForm({ ...editForm, ip_address: e.target.value })} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-username">Username</Label>
+                      <Input id="edit-username" value={editForm.username} onChange={(e) => setEditForm({ ...editForm, username: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-port">API Port</Label>
+                      <Input id="edit-port" type="number" value={editForm.port} onChange={(e) => setEditForm({ ...editForm, port: parseInt(e.target.value) || 8728 })} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-password">Password</Label>
+                    <Input id="edit-password" type="password" placeholder="Leave blank to keep current" value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+                  <Button onClick={handleEdit} disabled={saving}>
+                    {saving ? "Saving..." : "Save Changes"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Button
               variant="ghost"
               size="icon"
