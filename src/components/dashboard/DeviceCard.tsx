@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Cpu, HardDrive, Network, Clock, Trash2 } from "lucide-react";
+import { Activity, Cpu, HardDrive, Network, Clock, Trash2, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useState } from "react";
 
 interface DeviceCardProps {
   device: {
@@ -23,6 +24,8 @@ interface DeviceCardProps {
 }
 
 export const DeviceCard = ({ device }: DeviceCardProps) => {
+  const [pinging, setPinging] = useState(false);
+  const [pingResult, setPingResult] = useState<string | null>(null);
   const status = device.metrics?.status || "offline";
   
   const statusColors = {
@@ -36,6 +39,26 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
     offline: "destructive",
     warning: "secondary",
   } as const;
+
+  const handlePing = async () => {
+    setPinging(true);
+    setPingResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("ping-device", {
+        body: { ip_address: device.ip_address },
+      });
+      if (error) throw error;
+      const result = data?.reachable ? `Reachable (${data.latency_ms}ms)` : "Unreachable";
+      setPingResult(result);
+      toast[data?.reachable ? "success" : "error"](`${device.name}: ${result}`);
+    } catch (error) {
+      console.error("Ping failed:", error);
+      setPingResult("Error");
+      toast.error("Ping failed");
+    } finally {
+      setPinging(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!confirm(`Are you sure you want to delete ${device.name}?`)) return;
@@ -70,6 +93,16 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
             <Button
               variant="ghost"
               size="icon"
+              onClick={handlePing}
+              disabled={pinging}
+              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+              title="Ping device"
+            >
+              <Wifi className={`h-4 w-4 ${pinging ? "animate-pulse" : ""}`} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleDelete}
               className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
             >
@@ -79,6 +112,11 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
         </div>
         <div className="text-sm text-muted-foreground space-y-1">
           <p className="font-mono">{device.ip_address}</p>
+          {pingResult && (
+            <p className={`text-xs font-mono ${pingResult.includes("Reachable") ? "text-green-500" : "text-destructive"}`}>
+              ● {pingResult}
+            </p>
+          )}
           {device.model && <p>{device.model}</p>}
           {device.routeros_version && <p>RouterOS {device.routeros_version}</p>}
         </div>
