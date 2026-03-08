@@ -29,19 +29,29 @@ async function pingViaCheckHost(ip: string): Promise<{ reachable: boolean; laten
       return tcpProbe(ip);
     }
 
-    // Step 2: Poll for results (wait a few seconds for ICMP results)
-    await new Promise((r) => setTimeout(r, 4000));
+    // Step 2: Poll for results with retries (ICMP can take a while for distant IPs)
+    let resultData: any = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await new Promise((r) => setTimeout(r, attempt === 0 ? 3000 : 2500));
 
-    const resultRes = await fetch(`https://check-host.net/check-result/${requestId}`, {
-      headers: { "Accept": "application/json" },
-    });
+      const resultRes = await fetch(`https://check-host.net/check-result/${requestId}`, {
+        headers: { "Accept": "application/json" },
+      });
 
-    if (!resultRes.ok) {
-      console.log(`check-host.net result returned ${resultRes.status}, falling back to TCP`);
-      return tcpProbe(ip);
+      if (!resultRes.ok) continue;
+
+      resultData = await resultRes.json();
+      console.log(`Poll attempt ${attempt + 1}:`, JSON.stringify(resultData));
+
+      // Check if any node has non-null results
+      const hasResults = Object.values(resultData).some((v: any) => v !== null);
+      if (hasResults) break;
     }
 
-    const resultData = await resultRes.json();
+    if (!resultData || Object.values(resultData).every((v: any) => v === null)) {
+      console.log("No ICMP results after polling, falling back to TCP");
+      return tcpProbe(ip);
+    }
     console.log("check-host.net raw result:", JSON.stringify(resultData));
 
     // Parse results: each node returns array of [status, latency, ...] entries
