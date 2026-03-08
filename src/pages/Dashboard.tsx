@@ -95,6 +95,10 @@ const Dashboard = () => {
                   Users
                 </Button>
               )}
+              <Button variant="outline" size="sm" onClick={() => setShowChangePassword(true)}>
+                <KeyRound className="h-4 w-4 mr-2" />
+                Password
+              </Button>
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
