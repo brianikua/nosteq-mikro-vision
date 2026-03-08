@@ -163,12 +163,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ── Authentication: verify the caller has the service role key ──
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // ── Authentication: verify caller has a valid project key ──
     const authHeader = req.headers.get("Authorization");
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : null;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    if (!bearerToken || bearerToken !== serviceKey) {
+    if (!bearerToken || (bearerToken !== anonKey && bearerToken !== serviceKey)) {
       return new Response(
         JSON.stringify({ error: "Forbidden" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
