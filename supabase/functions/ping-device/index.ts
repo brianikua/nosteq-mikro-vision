@@ -12,7 +12,7 @@ const corsHeaders = {
 async function pingViaCheckHost(ip: string): Promise<{ reachable: boolean; latency_ms: number }> {
   try {
     // Step 1: Request a ping check
-    const checkRes = await fetch(`https://check-host.net/check-ping?host=${ip}&max_nodes=4`, {
+    const checkRes = await fetch(`https://check-host.net/check-ping?host=${ip}&max_nodes=3`, {
       headers: { "Accept": "application/json" },
     });
 
