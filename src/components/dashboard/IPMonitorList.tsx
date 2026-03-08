@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, Wifi, Trash2, Shield, Clock, ChevronDown, Globe } from "lucide-react";
+import { Loader2, Wifi, Trash2, Shield, Clock, ChevronDown, Globe, Pencil } from "lucide-react";
+import { EditIPDialog } from "./EditIPDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
   const [pinging, setPinging] = useState<Record<string, boolean>>({});
   const [openPorts, setOpenPorts] = useState<Record<string, number[]>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editDevice, setEditDevice] = useState<MonitoredIP | null>(null);
 
   const fetchIPs = async () => {
     setLoading(true);
@@ -286,6 +288,14 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                     {pinging[ip.id] ? "Pinging..." : "Ping Now"}
                   </Button>
                   <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); setEditDevice(ip); }}
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                    Edit
+                  </Button>
+                  <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -300,6 +310,12 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
           </Collapsible>
         );
       })}
+      <EditIPDialog
+        device={editDevice}
+        open={!!editDevice}
+        onOpenChange={(open) => { if (!open) setEditDevice(null); }}
+        onSaved={fetchIPs}
+      />
     </div>
   );
 };
