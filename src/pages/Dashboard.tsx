@@ -155,6 +155,48 @@ const Dashboard = () => {
       </main>
 
       <AddIPDialog open={showAddIP} onOpenChange={setShowAddIP} />
+
+      <Dialog open={showChangePassword} onOpenChange={(open) => { setShowChangePassword(open); if (!open) { setNewPw(""); setConfirmPw(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>Enter a new password for your account.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="cp-new">New Password</Label>
+              <Input id="cp-new" type="password" placeholder="Min 6 characters" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cp-confirm">Confirm Password</Label>
+              <Input id="cp-confirm" type="password" placeholder="Re-enter password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowChangePassword(false); setNewPw(""); setConfirmPw(""); }}>Cancel</Button>
+            <Button disabled={pwLoading} onClick={async () => {
+              if (newPw.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+              if (newPw !== confirmPw) { toast.error("Passwords do not match"); return; }
+              setPwLoading(true);
+              try {
+                const { error } = await supabase.auth.updateUser({ password: newPw });
+                if (error) throw error;
+                toast.success("Password updated successfully");
+                setShowChangePassword(false);
+                setNewPw("");
+                setConfirmPw("");
+              } catch (err: any) {
+                toast.error(err.message || "Failed to update password");
+              } finally {
+                setPwLoading(false);
+              }
+            }}>
+              {pwLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Update Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
