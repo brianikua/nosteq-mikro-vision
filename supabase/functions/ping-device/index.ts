@@ -50,9 +50,12 @@ async function pingViaCheckHost(ip: string): Promise<{ reachable: boolean; laten
     let successCount = 0;
     let totalNodes = 0;
 
-    for (const [_node, pings] of Object.entries(resultData)) {
-      if (!Array.isArray(pings) || pings.length === 0) continue;
+    for (const [_node, nodeResult] of Object.entries(resultData)) {
+      if (!Array.isArray(nodeResult) || nodeResult.length === 0) continue;
       totalNodes++;
+
+      // Results are double-nested: [[["OK", latency, ip], ["OK", latency], ...]]
+      const pings = Array.isArray(nodeResult[0]) ? nodeResult[0] : nodeResult;
 
       for (const ping of pings as any[]) {
         if (Array.isArray(ping) && ping[0] === "OK") {
