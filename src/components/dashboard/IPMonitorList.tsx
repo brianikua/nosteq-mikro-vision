@@ -28,6 +28,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
   const [ips, setIps] = useState<MonitoredIP[]>([]);
   const [loading, setLoading] = useState(true);
   const [pinging, setPinging] = useState<Record<string, boolean>>({});
+  const [openPorts, setOpenPorts] = useState<Record<string, number[]>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchIPs = async () => {
