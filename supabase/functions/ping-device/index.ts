@@ -6,124 +6,131 @@ const corsHeaders = {
 };
 
 /**
- * Try to reach a host by attempting TCP connections to common ports.
- * A host is "up" if ANY port responds (even with connection refused — 
- * that means the OS replied, so the host is reachable).
+ * Uses check-host.net free API to perform real ICMP pings from multiple locations.
+ * Falls back to TCP probing if the external API fails.
  */
-async function probeHost(ip: string, timeoutMs = 4000): Promise<{ reachable: boolean; latency_ms: number }> {
-  const ports = [443, 80, 22, 53, 8080, 8443];
+async function pingViaCheckHost(ip: string): Promise<{ reachable: boolean; latency_ms: number }> {
+  try {
+    // Step 1: Request a ping check
+    const checkRes = await fetch(`https://check-host.net/check-ping?host=${ip}&max_nodes=4`, {
+      headers: { "Accept": "application/json" },
+    });
+
+    if (!checkRes.ok) {
+      console.log(`check-host.net returned ${checkRes.status}, falling back to TCP`);
+      return tcpProbe(ip);
+    }
+
+    const checkData = await checkRes.json();
+    const requestId = checkData.request_id;
+
+    if (!requestId) {
+      console.log("No request_id from check-host.net, falling back to TCP");
+      return tcpProbe(ip);
+    }
+
+    // Step 2: Poll for results (wait a few seconds for ICMP results)
+    await new Promise((r) => setTimeout(r, 4000));
+
+    const resultRes = await fetch(`https://check-host.net/check-result/${requestId}`, {
+      headers: { "Accept": "application/json" },
+    });
+
+    if (!resultRes.ok) {
+      console.log(`check-host.net result returned ${resultRes.status}, falling back to TCP`);
+      return tcpProbe(ip);
+    }
+
+    const resultData = await resultRes.json();
+    console.log("check-host.net raw result:", JSON.stringify(resultData));
+
+    // Parse results: each node returns array of [status, latency, ...] entries
+    // status: "OK" means reachable, latency is in seconds
+    let totalLatency = 0;
+    let successCount = 0;
+    let totalNodes = 0;
+
+    for (const [_node, pings] of Object.entries(resultData)) {
+      if (!Array.isArray(pings) || pings.length === 0) continue;
+      totalNodes++;
+
+      for (const ping of pings as any[]) {
+        if (Array.isArray(ping) && ping[0] === "OK") {
+          successCount++;
+          totalLatency += ping[1] * 1000; // Convert seconds to ms
+        }
+      }
+    }
+
+    if (totalNodes === 0) {
+      console.log("No results from any node yet, falling back to TCP");
+      return tcpProbe(ip);
+    }
+
+    const reachable = successCount > 0;
+    const latency_ms = successCount > 0 ? Math.round(totalLatency / successCount) : 0;
+
+    console.log(`ICMP result: ${successCount} successful pings from ${totalNodes} nodes, avg latency: ${latency_ms}ms`);
+    return { reachable, latency_ms };
+  } catch (e) {
+    console.error("check-host.net error:", e);
+    return tcpProbe(ip);
+  }
+}
+
+/**
+ * Fallback: TCP probe on common ports
+ */
+async function tcpProbe(ip: string): Promise<{ reachable: boolean; latency_ms: number }> {
+  const ports = [443, 80, 22, 53, 8080];
   const start = performance.now();
+  const timeoutMs = 3000;
 
-  // Try all ports in parallel — first success wins
-  const probes = ports.flatMap((port) => {
-    // HTTPS probe
-    const httpsProbe = (async () => {
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        await fetch(`https://${ip}:${port}/`, {
-          signal: controller.signal,
-          method: "HEAD",
-          redirect: "manual",
-        });
-        clearTimeout(timer);
-        return true;
-      } catch (e) {
-        const msg = e?.message || String(e);
-        // Connection refused = host is up, port just closed
-        // SSL/TLS errors = host is up, just not serving valid HTTPS
-        if (
-          msg.includes("onnection refused") ||
-          msg.includes("certificate") ||
-          msg.includes("SSL") ||
-          msg.includes("tls") ||
-          msg.includes("CERT") ||
-          msg.includes("handshake") ||
-          msg.includes("alert")
-        ) {
-          return true;
-        }
-        return false;
-      }
-    })();
-
-    // HTTP probe
-    const httpProbe = (async () => {
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        await fetch(`http://${ip}:${port}/`, {
-          signal: controller.signal,
-          method: "HEAD",
-          redirect: "manual",
-        });
-        clearTimeout(timer);
-        return true;
-      } catch (e) {
-        const msg = e?.message || String(e);
-        if (msg.includes("onnection refused")) {
-          return true;
-        }
-        return false;
-      }
-    })();
-
-    return [httpsProbe, httpProbe];
-  });
-
-  // Also try a DNS-style probe on port 53 via TCP with raw fetch
-  // And a plain TCP connect via Deno.connect if available
-  const tcpProbes = ports.map(async (port) => {
+  const probes = ports.map(async (port) => {
     try {
       const conn = await (Deno as any).connect({ hostname: ip, port, transport: "tcp" });
       conn.close();
       return true;
     } catch (e) {
       const msg = e?.message || String(e);
-      // Connection refused = host responded (it's up!)
-      if (msg.includes("onnection refused") || msg.includes("Connection refused")) {
+      if (msg.includes("onnection refused")) return true; // host is up
+      return false;
+    }
+  });
+
+  // Also try HTTP/HTTPS fetch
+  const httpProbes = [80, 443].map(async (port) => {
+    try {
+      const proto = port === 443 ? "https" : "http";
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      await fetch(`${proto}://${ip}:${port}/`, {
+        signal: controller.signal,
+        method: "HEAD",
+        redirect: "manual",
+      });
+      clearTimeout(timer);
+      return true;
+    } catch (e) {
+      const msg = e?.message || String(e);
+      if (
+        msg.includes("onnection refused") ||
+        msg.includes("certificate") ||
+        msg.includes("SSL") ||
+        msg.includes("tls")
+      ) {
         return true;
       }
       return false;
     }
   });
 
-  const allProbes = [...probes, ...tcpProbes];
-
-  // Race: resolve as soon as any probe returns true, or wait for all
-  const result = await new Promise<boolean>((resolve) => {
-    let pending = allProbes.length;
-    let resolved = false;
-
-    for (const probe of allProbes) {
-      probe.then((up) => {
-        if (up && !resolved) {
-          resolved = true;
-          resolve(true);
-        }
-        pending--;
-        if (pending === 0 && !resolved) {
-          resolve(false);
-        }
-      }).catch(() => {
-        pending--;
-        if (pending === 0 && !resolved) {
-          resolve(false);
-        }
-      });
-    }
-
-    // Overall timeout
-    setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        resolve(false);
-      }
-    }, timeoutMs + 500);
-  });
-
+  const allProbes = [...probes, ...httpProbes];
+  const results = await Promise.allSettled(allProbes);
+  const reachable = results.some((r) => r.status === "fulfilled" && r.value === true);
   const latency_ms = Math.round(performance.now() - start);
-  return { reachable: result, latency_ms };
+
+  return { reachable, latency_ms };
 }
 
 Deno.serve(async (req) => {
@@ -179,8 +186,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Probing ${ip_address} with multi-port/protocol scan...`);
-    const { reachable, latency_ms } = await probeHost(ip_address);
+    console.log(`Pinging ${ip_address} via check-host.net ICMP + TCP fallback...`);
+    const { reachable, latency_ms } = await pingViaCheckHost(ip_address);
     console.log(`Result for ${ip_address}: reachable=${reachable}, latency=${latency_ms}ms`);
 
     return new Response(
