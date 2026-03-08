@@ -254,6 +254,36 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Send SMS alert on status change
+      if (statusChanged && smsEnabled) {
+        const isDown = !reachable;
+        const shouldNotify = isDown ? smsConfig.notify_down : smsConfig.notify_up;
+
+        if (shouldNotify) {
+          const emoji = isDown ? "🔴" : "🟢";
+          const status = isDown ? "DOWN" : "UP";
+          const template = smsConfig.message_template || "{{status_emoji}} {{device_name}} ({{ip_address}}) is {{status}}. Latency: {{latency}}ms";
+          const smsMessage = applyTemplate(template, {
+            status_emoji: emoji,
+            device_name: device.name,
+            ip_address: device.ip_address,
+            status,
+            latency: String(latency_ms),
+            isp_name: smsConfig.isp_contact_name || "N/A",
+            isp_number: smsConfig.isp_contact_number || "N/A",
+          });
+
+          const sent = await sendSmsWebhook(smsConfig, smsConfig.client_number, smsMessage);
+
+          await supabase.from("notification_log").insert({
+            event_type: isDown ? "sms_ip_down" : "sms_ip_up",
+            ip_address: device.ip_address,
+            message: `SMS: ${device.name} is ${status}`,
+            success: sent,
+            error_message: sent ? null : "SMS webhook failed",
+          });
+        }
+
       results.push({
         name: device.name,
         ip: device.ip_address,
