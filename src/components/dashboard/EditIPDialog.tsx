@@ -45,6 +45,7 @@ export const EditIPDialog = ({ device, open, onOpenChange, onSaved }: EditIPDial
   const [interval, setInterval] = useState(5);
   const [ports, setPorts] = useState<number[]>([80, 443]);
   const [portInput, setPortInput] = useState("");
+  const [notifyNumber, setNotifyNumber] = useState("");
 
   useEffect(() => {
     if (device) {
