@@ -28,6 +28,7 @@ interface Device {
   ip_address: string;
   check_ports: number[] | null;
   check_interval_minutes: number | null;
+  notify_number: string | null;
 }
 
 interface EditIPDialogProps {
