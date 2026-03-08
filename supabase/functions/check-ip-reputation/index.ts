@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ── Authentication: Verify JWT and check role ──
+    // ── Authentication: Accept service role key (for cron) or JWT (for users) ──
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
@@ -180,38 +180,45 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Verify the user's JWT
-    const authClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+
+    // Allow service role key or anon key for cron/automated calls
+    const isCronCall = token === serviceKey || token === anonKey;
+
+    if (!isCronCall) {
+      // Verify the user's JWT for manual calls
+      const authClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const userId = claimsData.claims.sub;
+
+      // Check user has admin or superadmin role
+      const { data: roles } = await authClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+
+      const isAuthorized = roles?.some(
+        (r: any) => r.role === "admin" || r.role === "superadmin"
       );
+      if (!isAuthorized) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden: Admin role required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    const userId = claimsData.claims.sub;
-
-    // Check user has admin or superadmin role
-    const { data: roles } = await authClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-
-    const isAuthorized = roles?.some(
-      (r: any) => r.role === "admin" || r.role === "superadmin"
-    );
-    if (!isAuthorized) {
-      return new Response(
-        JSON.stringify({ error: "Forbidden: Admin role required" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    console.log(`check-ip-reputation called (cron: ${isCronCall})`);
 
     // ── Use service role for DB operations ──
     const abuseIPDBKey = Deno.env.get("ABUSEIPDB_API_KEY");
