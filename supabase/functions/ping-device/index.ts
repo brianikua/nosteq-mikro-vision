@@ -24,38 +24,28 @@ serve(async (req) => {
     let reachable = false;
     let latency_ms = 0;
 
-    // Try HTTP HEAD request with short timeout (edge functions can't do raw TCP)
-    const ports = [80, 443, 8291];
-    
-    for (const port of ports) {
-      if (reachable) break;
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 4000);
-        const protocol = port === 443 ? "https" : "http";
-        await fetch(`${protocol}://${ip_address}:${port}/`, {
-          signal: controller.signal,
-          method: "HEAD",
-          // @ts-ignore - Deno supports this
-          redirect: "manual",
-        });
-        latency_ms = Math.round(performance.now() - start);
+    // Use a single HTTP request with a 3 second timeout
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const response = await fetch(`http://${ip_address}/`, {
+        signal: controller.signal,
+        method: "GET",
+        redirect: "manual",
+      });
+      latency_ms = Math.round(performance.now() - start);
+      reachable = true;
+      clearTimeout(timeout);
+      console.log(`Ping ${ip_address}: HTTP status=${response.status}, latency=${latency_ms}ms`);
+    } catch (e) {
+      latency_ms = Math.round(performance.now() - start);
+      const msg = e?.message || String(e);
+      console.log(`Ping ${ip_address}: error="${msg}", latency=${latency_ms}ms`);
+      // "Connection refused" means host is up but port closed - still reachable
+      if (msg.includes("onnection refused")) {
         reachable = true;
-        clearTimeout(timeout);
-      } catch (e) {
-        // Connection refused also means host is reachable
-        if (e.message && (e.message.includes("Connection refused") || e.message.includes("connection refused"))) {
-          latency_ms = Math.round(performance.now() - start);
-          reachable = true;
-        }
       }
     }
-
-    if (!reachable) {
-      latency_ms = Math.round(performance.now() - start);
-    }
-
-    console.log(`Ping ${ip_address}: reachable=${reachable}, latency=${latency_ms}ms`);
 
     return new Response(
       JSON.stringify({ reachable, latency_ms, ip_address }),
