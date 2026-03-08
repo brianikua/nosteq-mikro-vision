@@ -14,118 +14,8 @@ export type Database = {
   }
   public: {
     Tables: {
-      abuse_attributions: {
-        Row: {
-          abuse_category: Database["public"]["Enums"]["abuse_category"]
-          attributed_at: string
-          device_id: string
-          evidence: Json | null
-          id: string
-          pppoe_username: string | null
-          private_ip: string | null
-          scan_id: string
-          severity_score: number
-        }
-        Insert: {
-          abuse_category: Database["public"]["Enums"]["abuse_category"]
-          attributed_at?: string
-          device_id: string
-          evidence?: Json | null
-          id?: string
-          pppoe_username?: string | null
-          private_ip?: string | null
-          scan_id: string
-          severity_score?: number
-        }
-        Update: {
-          abuse_category?: Database["public"]["Enums"]["abuse_category"]
-          attributed_at?: string
-          device_id?: string
-          evidence?: Json | null
-          id?: string
-          pppoe_username?: string | null
-          private_ip?: string | null
-          scan_id?: string
-          severity_score?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "abuse_attributions_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "abuse_attributions_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "abuse_attributions_scan_id_fkey"
-            columns: ["scan_id"]
-            isOneToOne: false
-            referencedRelation: "blacklist_scans"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      arp_entries: {
-        Row: {
-          address: string
-          collected_at: string
-          device_id: string
-          id: string
-          interface: string | null
-          is_complete: boolean | null
-          is_dynamic: boolean | null
-          mac_address: string | null
-          mikrotik_id: string | null
-        }
-        Insert: {
-          address: string
-          collected_at?: string
-          device_id: string
-          id?: string
-          interface?: string | null
-          is_complete?: boolean | null
-          is_dynamic?: boolean | null
-          mac_address?: string | null
-          mikrotik_id?: string | null
-        }
-        Update: {
-          address?: string
-          collected_at?: string
-          device_id?: string
-          id?: string
-          interface?: string | null
-          is_complete?: boolean | null
-          is_dynamic?: boolean | null
-          mac_address?: string | null
-          mikrotik_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "arp_entries_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "arp_entries_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       blacklist_scans: {
         Row: {
-          abuse_category: Database["public"]["Enums"]["abuse_category"] | null
           confidence_score: number | null
           device_id: string
           expires_at: string | null
@@ -134,10 +24,8 @@ export type Database = {
           provider: string
           raw_response: Json | null
           scanned_at: string
-          status: Database["public"]["Enums"]["scan_status"]
         }
         Insert: {
-          abuse_category?: Database["public"]["Enums"]["abuse_category"] | null
           confidence_score?: number | null
           device_id: string
           expires_at?: string | null
@@ -146,10 +34,8 @@ export type Database = {
           provider: string
           raw_response?: Json | null
           scanned_at?: string
-          status?: Database["public"]["Enums"]["scan_status"]
         }
         Update: {
-          abuse_category?: Database["public"]["Enums"]["abuse_category"] | null
           confidence_score?: number | null
           device_id?: string
           expires_at?: string | null
@@ -158,7 +44,6 @@ export type Database = {
           provider?: string
           raw_response?: Json | null
           scanned_at?: string
-          status?: Database["public"]["Enums"]["scan_status"]
         }
         Relationships: [
           {
@@ -166,400 +51,45 @@ export type Database = {
             columns: ["device_id"]
             isOneToOne: false
             referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "blacklist_scans_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      connection_tracking: {
-        Row: {
-          collected_at: string
-          device_id: string
-          icmp_connections: number | null
-          id: string
-          tcp_connections: number | null
-          top_destinations: Json | null
-          top_sources: Json | null
-          total_connections: number
-          udp_connections: number | null
-        }
-        Insert: {
-          collected_at?: string
-          device_id: string
-          icmp_connections?: number | null
-          id?: string
-          tcp_connections?: number | null
-          top_destinations?: Json | null
-          top_sources?: Json | null
-          total_connections?: number
-          udp_connections?: number | null
-        }
-        Update: {
-          collected_at?: string
-          device_id?: string
-          icmp_connections?: number | null
-          id?: string
-          tcp_connections?: number | null
-          top_destinations?: Json | null
-          top_sources?: Json | null
-          total_connections?: number
-          udp_connections?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "connection_tracking_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "connection_tracking_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      device_interfaces: {
-        Row: {
-          device_id: string
-          id: string
-          name: string
-          recorded_at: string
-          rx_rate: number | null
-          status: string
-          tx_rate: number | null
-        }
-        Insert: {
-          device_id: string
-          id?: string
-          name: string
-          recorded_at?: string
-          rx_rate?: number | null
-          status: string
-          tx_rate?: number | null
-        }
-        Update: {
-          device_id?: string
-          id?: string
-          name?: string
-          recorded_at?: string
-          rx_rate?: number | null
-          status?: string
-          tx_rate?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "device_interfaces_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_interfaces_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      device_metrics: {
-        Row: {
-          cpu_load: number | null
-          device_id: string
-          id: string
-          memory_usage: number | null
-          recorded_at: string
-          status: Database["public"]["Enums"]["device_status"]
-          total_traffic: number | null
-          uptime: string | null
-        }
-        Insert: {
-          cpu_load?: number | null
-          device_id: string
-          id?: string
-          memory_usage?: number | null
-          recorded_at?: string
-          status: Database["public"]["Enums"]["device_status"]
-          total_traffic?: number | null
-          uptime?: string | null
-        }
-        Update: {
-          cpu_load?: number | null
-          device_id?: string
-          id?: string
-          memory_usage?: number | null
-          recorded_at?: string
-          status?: Database["public"]["Enums"]["device_status"]
-          total_traffic?: number | null
-          uptime?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "device_metrics_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_metrics_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
             referencedColumns: ["id"]
           },
         ]
       }
       devices: {
         Row: {
+          check_interval_minutes: number | null
           created_at: string
           id: string
           ip_address: string
-          model: string | null
+          is_up: boolean | null
+          last_latency_ms: number | null
+          last_ping_at: string | null
           name: string
-          password: string
-          password_secret_id: string | null
-          port: number
-          routeros_version: string | null
           updated_at: string
-          username: string
         }
         Insert: {
+          check_interval_minutes?: number | null
           created_at?: string
           id?: string
           ip_address: string
-          model?: string | null
+          is_up?: boolean | null
+          last_latency_ms?: number | null
+          last_ping_at?: string | null
           name: string
-          password: string
-          password_secret_id?: string | null
-          port?: number
-          routeros_version?: string | null
           updated_at?: string
-          username: string
         }
         Update: {
+          check_interval_minutes?: number | null
           created_at?: string
           id?: string
           ip_address?: string
-          model?: string | null
+          is_up?: boolean | null
+          last_latency_ms?: number | null
+          last_ping_at?: string | null
           name?: string
-          password?: string
-          password_secret_id?: string | null
-          port?: number
-          routeros_version?: string | null
           updated_at?: string
-          username?: string
         }
         Relationships: []
-      }
-      dhcp_leases: {
-        Row: {
-          address: string
-          collected_at: string
-          device_id: string
-          expires_after: string | null
-          host_name: string | null
-          id: string
-          last_seen: string | null
-          mac_address: string | null
-          mikrotik_id: string | null
-          server: string | null
-          status: string | null
-        }
-        Insert: {
-          address: string
-          collected_at?: string
-          device_id: string
-          expires_after?: string | null
-          host_name?: string | null
-          id?: string
-          last_seen?: string | null
-          mac_address?: string | null
-          mikrotik_id?: string | null
-          server?: string | null
-          status?: string | null
-        }
-        Update: {
-          address?: string
-          collected_at?: string
-          device_id?: string
-          expires_after?: string | null
-          host_name?: string | null
-          id?: string
-          last_seen?: string | null
-          mac_address?: string | null
-          mikrotik_id?: string | null
-          server?: string | null
-          status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dhcp_leases_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dhcp_leases_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      firewall_logs: {
-        Row: {
-          action: string | null
-          chain: string | null
-          collected_at: string
-          device_id: string
-          dst_address: string | null
-          dst_port: string | null
-          id: string
-          in_interface: string | null
-          log_message: string | null
-          out_interface: string | null
-          protocol: string | null
-          src_address: string | null
-          timestamp: string
-        }
-        Insert: {
-          action?: string | null
-          chain?: string | null
-          collected_at?: string
-          device_id: string
-          dst_address?: string | null
-          dst_port?: string | null
-          id?: string
-          in_interface?: string | null
-          log_message?: string | null
-          out_interface?: string | null
-          protocol?: string | null
-          src_address?: string | null
-          timestamp?: string
-        }
-        Update: {
-          action?: string | null
-          chain?: string | null
-          collected_at?: string
-          device_id?: string
-          dst_address?: string | null
-          dst_port?: string | null
-          id?: string
-          in_interface?: string | null
-          log_message?: string | null
-          out_interface?: string | null
-          protocol?: string | null
-          src_address?: string | null
-          timestamp?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "firewall_logs_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "firewall_logs_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      firewall_rules: {
-        Row: {
-          action: string
-          bytes: number | null
-          chain: string
-          collected_at: string
-          comment: string | null
-          device_id: string
-          disabled: boolean
-          dst_address: string | null
-          dst_port: string | null
-          id: string
-          in_interface: string | null
-          mikrotik_id: string | null
-          out_interface: string | null
-          packets: number | null
-          protocol: string | null
-          rule_order: number | null
-          src_address: string | null
-          src_port: string | null
-        }
-        Insert: {
-          action: string
-          bytes?: number | null
-          chain: string
-          collected_at?: string
-          comment?: string | null
-          device_id: string
-          disabled?: boolean
-          dst_address?: string | null
-          dst_port?: string | null
-          id?: string
-          in_interface?: string | null
-          mikrotik_id?: string | null
-          out_interface?: string | null
-          packets?: number | null
-          protocol?: string | null
-          rule_order?: number | null
-          src_address?: string | null
-          src_port?: string | null
-        }
-        Update: {
-          action?: string
-          bytes?: number | null
-          chain?: string
-          collected_at?: string
-          comment?: string | null
-          device_id?: string
-          disabled?: boolean
-          dst_address?: string | null
-          dst_port?: string | null
-          id?: string
-          in_interface?: string | null
-          mikrotik_id?: string | null
-          out_interface?: string | null
-          packets?: number | null
-          protocol?: string | null
-          rule_order?: number | null
-          src_address?: string | null
-          src_port?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "firewall_rules_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "firewall_rules_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       ip_history: {
         Row: {
@@ -592,13 +122,6 @@ export type Database = {
             columns: ["device_id"]
             isOneToOne: false
             referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ip_history_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -642,213 +165,76 @@ export type Database = {
             referencedRelation: "devices"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "ip_reputation_summary_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: true
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
         ]
       }
-      mitigation_actions: {
+      notification_log: {
         Row: {
-          action_type: Database["public"]["Enums"]["mitigation_type"]
-          approved_by: string | null
-          attribution_id: string | null
-          created_at: string
-          description: string
-          device_id: string
-          executed_at: string | null
+          error_message: string | null
+          event_type: string
           id: string
-          is_approved: boolean
+          ip_address: string
+          message: string
+          sent_at: string | null
+          success: boolean | null
         }
         Insert: {
-          action_type: Database["public"]["Enums"]["mitigation_type"]
-          approved_by?: string | null
-          attribution_id?: string | null
-          created_at?: string
-          description: string
-          device_id: string
-          executed_at?: string | null
+          error_message?: string | null
+          event_type: string
           id?: string
-          is_approved?: boolean
+          ip_address: string
+          message: string
+          sent_at?: string | null
+          success?: boolean | null
         }
         Update: {
-          action_type?: Database["public"]["Enums"]["mitigation_type"]
-          approved_by?: string | null
-          attribution_id?: string | null
-          created_at?: string
-          description?: string
-          device_id?: string
-          executed_at?: string | null
+          error_message?: string | null
+          event_type?: string
           id?: string
-          is_approved?: boolean
+          ip_address?: string
+          message?: string
+          sent_at?: string | null
+          success?: boolean | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "mitigation_actions_attribution_id_fkey"
-            columns: ["attribution_id"]
-            isOneToOne: false
-            referencedRelation: "abuse_attributions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mitigation_actions_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mitigation_actions_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      nat_rules: {
+      telegram_config: {
         Row: {
-          action: string
-          bytes: number | null
-          chain: string
-          collected_at: string
-          comment: string | null
-          device_id: string
-          disabled: boolean
-          dst_address: string | null
-          dst_port: string | null
+          chat_id: string
+          created_at: string | null
+          enabled: boolean | null
           id: string
-          in_interface: string | null
-          mikrotik_id: string | null
-          out_interface: string | null
-          packets: number | null
-          protocol: string | null
-          rule_order: number | null
-          src_address: string | null
-          src_port: string | null
-          to_addresses: string | null
-          to_ports: string | null
+          notify_blacklisted: boolean | null
+          notify_delisted: boolean | null
+          notify_down: boolean | null
+          notify_summary: boolean | null
+          notify_up: boolean | null
+          updated_at: string | null
         }
         Insert: {
-          action: string
-          bytes?: number | null
-          chain: string
-          collected_at?: string
-          comment?: string | null
-          device_id: string
-          disabled?: boolean
-          dst_address?: string | null
-          dst_port?: string | null
+          chat_id: string
+          created_at?: string | null
+          enabled?: boolean | null
           id?: string
-          in_interface?: string | null
-          mikrotik_id?: string | null
-          out_interface?: string | null
-          packets?: number | null
-          protocol?: string | null
-          rule_order?: number | null
-          src_address?: string | null
-          src_port?: string | null
-          to_addresses?: string | null
-          to_ports?: string | null
+          notify_blacklisted?: boolean | null
+          notify_delisted?: boolean | null
+          notify_down?: boolean | null
+          notify_summary?: boolean | null
+          notify_up?: boolean | null
+          updated_at?: string | null
         }
         Update: {
-          action?: string
-          bytes?: number | null
-          chain?: string
-          collected_at?: string
-          comment?: string | null
-          device_id?: string
-          disabled?: boolean
-          dst_address?: string | null
-          dst_port?: string | null
+          chat_id?: string
+          created_at?: string | null
+          enabled?: boolean | null
           id?: string
-          in_interface?: string | null
-          mikrotik_id?: string | null
-          out_interface?: string | null
-          packets?: number | null
-          protocol?: string | null
-          rule_order?: number | null
-          src_address?: string | null
-          src_port?: string | null
-          to_addresses?: string | null
-          to_ports?: string | null
+          notify_blacklisted?: boolean | null
+          notify_delisted?: boolean | null
+          notify_down?: boolean | null
+          notify_summary?: boolean | null
+          notify_up?: boolean | null
+          updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "nat_rules_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "nat_rules_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pppoe_sessions: {
-        Row: {
-          address: string | null
-          caller_id: string | null
-          collected_at: string
-          device_id: string
-          encoding: string | null
-          id: string
-          mikrotik_id: string | null
-          service: string | null
-          session_id: string | null
-          uptime: string | null
-          username: string
-        }
-        Insert: {
-          address?: string | null
-          caller_id?: string | null
-          collected_at?: string
-          device_id: string
-          encoding?: string | null
-          id?: string
-          mikrotik_id?: string | null
-          service?: string | null
-          session_id?: string | null
-          uptime?: string | null
-          username: string
-        }
-        Update: {
-          address?: string | null
-          caller_id?: string | null
-          collected_at?: string
-          device_id?: string
-          encoding?: string | null
-          id?: string
-          mikrotik_id?: string | null
-          service?: string | null
-          session_id?: string | null
-          uptime?: string | null
-          username?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pppoe_sessions_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pppoe_sessions_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices_safe"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -873,52 +259,9 @@ export type Database = {
       }
     }
     Views: {
-      devices_safe: {
-        Row: {
-          created_at: string | null
-          id: string | null
-          ip_address: string | null
-          model: string | null
-          name: string | null
-          port: number | null
-          routeros_version: string | null
-          updated_at: string | null
-          username: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string | null
-          ip_address?: string | null
-          model?: string | null
-          name?: string | null
-          port?: number | null
-          routeros_version?: string | null
-          updated_at?: string | null
-          username?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string | null
-          ip_address?: string | null
-          model?: string | null
-          name?: string | null
-          port?: number | null
-          routeros_version?: string | null
-          updated_at?: string | null
-          username?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
-      decrypt_device_password: {
-        Args: { p_device_id: string }
-        Returns: string
-      }
-      encrypt_device_password: {
-        Args: { p_device_id: string; p_password: string }
-        Returns: undefined
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -928,25 +271,7 @@ export type Database = {
       }
     }
     Enums: {
-      abuse_category:
-        | "spam"
-        | "ddos"
-        | "port_scanning"
-        | "botnet"
-        | "malware"
-        | "open_relay"
-        | "brute_force"
-        | "dns_amplification"
-        | "smtp_abuse"
-        | "other"
       app_role: "admin" | "viewer" | "superadmin"
-      device_status: "online" | "offline" | "warning"
-      mitigation_type:
-        | "firewall_rule"
-        | "rate_limit"
-        | "port_block"
-        | "customer_suspension"
-        | "manual_review"
       scan_status: "clean" | "listed" | "error"
     }
     CompositeTypes: {
@@ -1075,27 +400,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      abuse_category: [
-        "spam",
-        "ddos",
-        "port_scanning",
-        "botnet",
-        "malware",
-        "open_relay",
-        "brute_force",
-        "dns_amplification",
-        "smtp_abuse",
-        "other",
-      ],
       app_role: ["admin", "viewer", "superadmin"],
-      device_status: ["online", "offline", "warning"],
-      mitigation_type: [
-        "firewall_rule",
-        "rate_limit",
-        "port_block",
-        "customer_suspension",
-        "manual_review",
-      ],
       scan_status: ["clean", "listed", "error"],
     },
   },
