@@ -28,6 +28,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
   const [ips, setIps] = useState<MonitoredIP[]>([]);
   const [loading, setLoading] = useState(true);
   const [pinging, setPinging] = useState<Record<string, boolean>>({});
+  const [openPorts, setOpenPorts] = useState<Record<string, number[]>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchIPs = async () => {
@@ -69,12 +70,14 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
       if (error) throw error;
       const isUp = data?.reachable ?? false;
       const latency = data?.latency_ms ?? 0;
+      const detectedOpenPorts: number[] = data?.open_ports ?? [];
+      setOpenPorts((prev) => ({ ...prev, [ip.id]: detectedOpenPorts }));
       await supabase.from("devices").update({
         is_up: isUp,
         last_ping_at: new Date().toISOString(),
         last_latency_ms: latency,
       }).eq("id", ip.id);
-      toast[isUp ? "success" : "error"](`${ip.name}: ${isUp ? `Up (${latency}ms)` : "Down"}`);
+      toast[isUp ? "success" : "error"](`${ip.name}: ${isUp ? `Up (${latency}ms)` : "Down"}${detectedOpenPorts.length ? ` | Ports: ${detectedOpenPorts.join(",")}` : ""}`);
       fetchIPs();
     } catch {
       toast.error("Ping failed");
@@ -219,14 +222,39 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                 {/* Ports */}
                 {ip.check_ports && ip.check_ports.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Monitored Ports</p>
-                    <div className="flex flex-wrap gap-1">
-                      {ip.check_ports.map((port) => (
-                        <Badge key={port} variant="outline" className="text-xs font-mono">
-                          {port}
-                        </Badge>
-                      ))}
+                    <p className="text-xs text-muted-foreground mb-1">Port Status</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ip.check_ports.map((port) => {
+                        const deviceOpenPorts = openPorts[ip.id];
+                        const isScanned = deviceOpenPorts !== undefined;
+                        const isOpen = isScanned && deviceOpenPorts.includes(port);
+                        return (
+                          <Badge
+                            key={port}
+                            variant="outline"
+                            className={cn(
+                              "text-xs font-mono gap-1.5 py-0.5",
+                              isScanned
+                                ? isOpen
+                                  ? "border-[hsl(var(--success))]/50 bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
+                                  : "border-destructive/50 bg-destructive/10 text-destructive"
+                                : ""
+                            )}
+                          >
+                            <span className={cn(
+                              "h-1.5 w-1.5 rounded-full shrink-0",
+                              isScanned
+                                ? isOpen ? "bg-[hsl(var(--success))]" : "bg-destructive"
+                                : "bg-muted-foreground"
+                            )} />
+                            {port}
+                          </Badge>
+                        );
+                      })}
                     </div>
+                    {openPorts[ip.id] === undefined && (
+                      <p className="text-xs text-muted-foreground/60 mt-1">Ping to scan ports</p>
+                    )}
                   </div>
                 )}
 
