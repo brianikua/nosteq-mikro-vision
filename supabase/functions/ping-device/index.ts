@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Ping logic ──
-    const { ip_address } = await req.json();
+    const { ip_address, check_ports } = await req.json();
 
     if (!ip_address || !/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ip_address)) {
       return new Response(
@@ -175,12 +175,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Probing ${ip_address} via ICMP + TCP checks...`);
-    const { reachable, latency_ms, method } = await probeHost(ip_address);
-    console.log(`Result for ${ip_address}: reachable=${reachable}, latency=${latency_ms}ms, method=${method}`);
+    // Validate and sanitize ports
+    const ports: number[] = Array.isArray(check_ports)
+      ? check_ports.filter((p: any) => typeof p === "number" && p >= 1 && p <= 65535).slice(0, 10)
+      : [80, 443];
+
+    console.log(`Probing ${ip_address} via ICMP + TCP on ports [${ports.join(",")}]...`);
+    const { reachable, latency_ms, method, open_ports } = await probeHost(ip_address, ports);
+    console.log(`Result for ${ip_address}: reachable=${reachable}, latency=${latency_ms}ms, method=${method}, open_ports=[${open_ports.join(",")}]`);
 
     return new Response(
-      JSON.stringify({ reachable, latency_ms, ip_address, method }),
+      JSON.stringify({ reachable, latency_ms, ip_address, method, open_ports }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
