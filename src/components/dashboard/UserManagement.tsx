@@ -178,11 +178,16 @@ export function UserManagement() {
         </Button>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="permissions">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs defaultValue="my-password">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="my-password">My Password</TabsTrigger>
             <TabsTrigger value="permissions">Permissions</TabsTrigger>
             <TabsTrigger value="deletion">User Deletion</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="my-password" className="mt-4">
+            <ChangeMyPassword />
+          </TabsContent>
 
           <TabsContent value="permissions" className="mt-4">
             <div className="rounded-md border">
