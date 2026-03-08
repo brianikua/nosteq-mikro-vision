@@ -26,7 +26,7 @@ interface MonitoredIP {
   last_latency_ms: number | null;
   check_interval_minutes: number | null;
   check_ports: number[] | null;
-  notify_number: string | null;
+  notify_number: string[] | null;
   created_at: string;
   reputation?: { reputation_score: number; active_listings: number; total_listings: number; last_scan_at: string | null } | null;
 }
