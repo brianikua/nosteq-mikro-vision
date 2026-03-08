@@ -104,11 +104,7 @@ const Dashboard = () => {
           </div>
 
           <TabsContent value="monitor">
-            {viewMode === "grid" ? (
-              <IPMonitorGrid refreshTrigger={refreshTrigger} />
-            ) : (
-              <IPMonitorTable refreshTrigger={refreshTrigger} />
-            )}
+            <IPMonitorList refreshTrigger={refreshTrigger} />
           </TabsContent>
 
           <TabsContent value="reputation">
