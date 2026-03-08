@@ -122,6 +122,41 @@ async function sendTelegram(botToken: string, chatId: string, message: string): 
   }
 }
 
+/**
+ * Send SMS via configured webhook
+ */
+async function sendSmsWebhook(config: any, phone: string, message: string): Promise<boolean> {
+  try {
+    let res: Response;
+    if (config.webhook_method === "GET") {
+      const url = new URL(config.webhook_url);
+      url.searchParams.set("phone_number", phone);
+      url.searchParams.set("message", message);
+      res = await fetch(url.toString());
+    } else {
+      res = await fetch(config.webhook_url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone_number: phone, message }),
+      });
+    }
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Apply SMS message template
+ */
+function applyTemplate(template: string, vars: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+  }
+  return result;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -154,9 +189,17 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    const telegramEnabled = tgConfig?.enabled && tgConfig?.chat_id && botToken;
+    // Fetch SMS config
+    const { data: smsConfig } = await supabase
+      .from("sms_config")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
 
-    console.log(`Cron: Checking ${devices.length} devices, Telegram: ${telegramEnabled ? "enabled" : "disabled"}`);
+    const telegramEnabled = tgConfig?.enabled && tgConfig?.chat_id && botToken;
+    const smsEnabled = smsConfig?.enabled && smsConfig?.webhook_url && smsConfig?.client_number;
+
+    console.log(`Cron: Checking ${devices.length} devices, Telegram: ${telegramEnabled ? "enabled" : "disabled"}, SMS: ${smsEnabled ? "enabled" : "disabled"}`);
 
     const results: any[] = [];
 
@@ -210,6 +253,36 @@ Deno.serve(async (req) => {
           });
         }
       }
+
+      // Send SMS alert on status change
+      if (statusChanged && smsEnabled) {
+        const isDown = !reachable;
+        const shouldNotify = isDown ? smsConfig.notify_down : smsConfig.notify_up;
+
+        if (shouldNotify) {
+          const emoji = isDown ? "🔴" : "🟢";
+          const status = isDown ? "DOWN" : "UP";
+          const template = smsConfig.message_template || "{{status_emoji}} {{device_name}} ({{ip_address}}) is {{status}}. Latency: {{latency}}ms";
+          const smsMessage = applyTemplate(template, {
+            status_emoji: emoji,
+            device_name: device.name,
+            ip_address: device.ip_address,
+            status,
+            latency: String(latency_ms),
+            isp_name: smsConfig.isp_contact_name || "N/A",
+            isp_number: smsConfig.isp_contact_number || "N/A",
+          });
+
+          const sent = await sendSmsWebhook(smsConfig, smsConfig.client_number, smsMessage);
+
+          await supabase.from("notification_log").insert({
+            event_type: isDown ? "sms_ip_down" : "sms_ip_up",
+            ip_address: device.ip_address,
+            message: `SMS: ${device.name} is ${status}`,
+            success: sent,
+            error_message: sent ? null : "SMS webhook failed",
+          });
+        }
 
       results.push({
         name: device.name,

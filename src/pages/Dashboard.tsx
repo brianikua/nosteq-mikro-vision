@@ -8,6 +8,7 @@ import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
 import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab";
+import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
 import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
 import { toast } from "sonner";
 
@@ -112,13 +113,17 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="notifications">
-            <Tabs defaultValue="settings" className="space-y-4">
+            <Tabs defaultValue="telegram" className="space-y-4">
               <TabsList className="bg-secondary/50">
-                <TabsTrigger value="settings">Telegram Settings</TabsTrigger>
+                <TabsTrigger value="telegram">Telegram</TabsTrigger>
+                <TabsTrigger value="sms">SMS</TabsTrigger>
                 <TabsTrigger value="log">Notification Log</TabsTrigger>
               </TabsList>
-              <TabsContent value="settings">
+              <TabsContent value="telegram">
                 <TelegramSettingsTab />
+              </TabsContent>
+              <TabsContent value="sms">
+                <SmsSettingsTab />
               </TabsContent>
               <TabsContent value="log">
                 <NotificationLogTab />
