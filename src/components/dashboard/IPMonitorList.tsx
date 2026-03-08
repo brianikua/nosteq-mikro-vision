@@ -35,7 +35,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
     try {
       const { data: devices, error } = await supabase
         .from("devices")
-        .select("id, name, ip_address, is_up, last_ping_at, last_latency_ms, check_interval_minutes, created_at")
+        .select("id, name, ip_address, is_up, last_ping_at, last_latency_ms, check_interval_minutes, check_ports, created_at")
         .order("name");
       if (error) throw error;
 
