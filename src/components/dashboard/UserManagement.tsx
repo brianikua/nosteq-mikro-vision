@@ -4,8 +4,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Trash2, UserPlus, UserMinus } from "lucide-react";
+import { Trash2, UserPlus, UserMinus, KeyRound, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +19,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -36,41 +47,28 @@ export function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState<string | null>(null);
+  const [addForm, setAddForm] = useState({ email: "", password: "", role: "viewer" });
+  const [newPassword, setNewPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
+  const callManageUser = async (body: Record<string, any>) => {
+    const { data, error } = await supabase.functions.invoke("manage-user", { body });
+    if (error) throw new Error(error.message);
+    if (data?.error) throw new Error(data.error);
+    return data;
+  };
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      
-      // Get all user roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
-
-      if (rolesError) throw rolesError;
-
-      // Group roles by user_id
-      const rolesMap = new Map<string, string[]>();
-      userRoles?.forEach((ur) => {
-        const existing = rolesMap.get(ur.user_id) || [];
-        rolesMap.set(ur.user_id, [...existing, ur.role]);
-      });
-
-      // Get current user to filter out
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-
-      // Combine user data with roles
-      const usersWithRoles: User[] = Array.from(rolesMap.entries()).map(([userId, roles]) => ({
-        id: userId,
-        email: userId === currentUser?.id ? currentUser.email || "Unknown" : "User",
-        created_at: new Date().toISOString(),
-        roles,
-      }));
-
-      setUsers(usersWithRoles);
+      const data = await callManageUser({ action: "list_users" });
+      setUsers(data.users || []);
     } catch (error: any) {
       console.error("Error fetching users:", error);
       toast.error("Failed to load users");
@@ -79,61 +77,105 @@ export function UserManagement() {
     }
   };
 
+  const handleAddUser = async () => {
+    if (!addForm.email || !addForm.password) {
+      toast.error("Email and password are required");
+      return;
+    }
+    if (addForm.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await callManageUser({
+        action: "create_user",
+        email: addForm.email,
+        password: addForm.password,
+        role: addForm.role,
+      });
+      toast.success(`User ${addForm.email} created with ${addForm.role} role`);
+      setShowAddUser(false);
+      setAddForm({ email: "", password: "", role: "viewer" });
+      fetchUsers();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create user");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!showResetPassword || !newPassword) return;
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await callManageUser({
+        action: "reset_password",
+        user_id: showResetPassword,
+        new_password: newPassword,
+      });
+      toast.success("Password updated successfully");
+      setShowResetPassword(null);
+      setNewPassword("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reset password");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleToggleRole = async (userId: string, role: "admin" | "viewer" | "superadmin", hasRole: boolean) => {
     try {
       if (hasRole) {
-        // Remove role
         const { error } = await supabase
           .from("user_roles")
           .delete()
           .eq("user_id", userId)
           .eq("role", role);
-
         if (error) throw error;
         toast.success(`Removed ${role} role`);
       } else {
-        // Add role
         const { error } = await supabase
           .from("user_roles")
           .insert([{ user_id: userId, role }]);
-
         if (error) throw error;
         toast.success(`Added ${role} role`);
       }
-
       fetchUsers();
     } catch (error: any) {
-      console.error("Error updating role:", error);
       toast.error("Failed to update role");
     }
   };
 
   const handleDeleteUser = async () => {
     if (!deleteUserId) return;
-
     try {
-      // Delete user roles first
-      const { error: rolesError } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", deleteUserId);
-
-      if (rolesError) throw rolesError;
-
+      await callManageUser({ action: "delete_user", user_id: deleteUserId });
       toast.success("User deleted successfully");
       setDeleteUserId(null);
       fetchUsers();
     } catch (error: any) {
-      console.error("Error deleting user:", error);
-      toast.error("Failed to delete user");
+      toast.error(error.message || "Failed to delete user");
     }
   };
 
+  const resetPasswordUser = users.find((u) => u.id === showResetPassword);
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>User Management</CardTitle>
-        <CardDescription>Manage user permissions and accounts</CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>User Management</CardTitle>
+          <CardDescription>Manage user accounts, permissions and passwords</CardDescription>
+        </div>
+        <Button onClick={() => setShowAddUser(true)} size="sm">
+          <UserPlus className="h-4 w-4 mr-2" />
+          Add User
+        </Button>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="permissions">
@@ -155,15 +197,13 @@ export function UserManagement() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center">
-                        Loading users...
+                      <TableCell colSpan={3} className="text-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                       </TableCell>
                     </TableRow>
                   ) : users.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center">
-                        No users found
-                      </TableCell>
+                      <TableCell colSpan={3} className="text-center">No users found</TableCell>
                     </TableRow>
                   ) : (
                     users.map((user) => (
@@ -172,9 +212,7 @@ export function UserManagement() {
                         <TableCell>
                           <div className="flex gap-2 flex-wrap">
                             {user.roles.map((role) => (
-                              <Badge key={role} variant="secondary">
-                                {role}
-                              </Badge>
+                              <Badge key={role} variant="secondary">{role}</Badge>
                             ))}
                             {user.roles.length === 0 && (
                               <span className="text-sm text-muted-foreground">No roles</span>
@@ -182,43 +220,30 @@ export function UserManagement() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
+                          <div className="flex gap-2 justify-end flex-wrap">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleToggleRole(user.id, "superadmin", user.roles.includes("superadmin"))}
+                              onClick={() => setShowResetPassword(user.id)}
                             >
-                              {user.roles.includes("superadmin") ? (
-                                <UserMinus className="h-4 w-4 mr-1" />
-                              ) : (
-                                <UserPlus className="h-4 w-4 mr-1" />
-                              )}
-                              Superadmin
+                              <KeyRound className="h-4 w-4 mr-1" />
+                              Password
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleToggleRole(user.id, "admin", user.roles.includes("admin"))}
-                            >
-                              {user.roles.includes("admin") ? (
-                                <UserMinus className="h-4 w-4 mr-1" />
-                              ) : (
-                                <UserPlus className="h-4 w-4 mr-1" />
-                              )}
-                              Admin
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleToggleRole(user.id, "viewer", user.roles.includes("viewer"))}
-                            >
-                              {user.roles.includes("viewer") ? (
-                                <UserMinus className="h-4 w-4 mr-1" />
-                              ) : (
-                                <UserPlus className="h-4 w-4 mr-1" />
-                              )}
-                              Viewer
-                            </Button>
+                            {(["superadmin", "admin", "viewer"] as const).map((role) => (
+                              <Button
+                                key={role}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleRole(user.id, role, user.roles.includes(role))}
+                              >
+                                {user.roles.includes(role) ? (
+                                  <UserMinus className="h-4 w-4 mr-1" />
+                                ) : (
+                                  <UserPlus className="h-4 w-4 mr-1" />
+                                )}
+                                {role.charAt(0).toUpperCase() + role.slice(1)}
+                              </Button>
+                            ))}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -242,15 +267,13 @@ export function UserManagement() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center">
-                        Loading users...
+                      <TableCell colSpan={3} className="text-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                       </TableCell>
                     </TableRow>
                   ) : users.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center">
-                        No users found
-                      </TableCell>
+                      <TableCell colSpan={3} className="text-center">No users found</TableCell>
                     </TableRow>
                   ) : (
                     users.map((user) => (
@@ -259,13 +282,8 @@ export function UserManagement() {
                         <TableCell>
                           <div className="flex gap-2 flex-wrap">
                             {user.roles.map((role) => (
-                              <Badge key={role} variant="secondary">
-                                {role}
-                              </Badge>
+                              <Badge key={role} variant="secondary">{role}</Badge>
                             ))}
-                            {user.roles.length === 0 && (
-                              <span className="text-sm text-muted-foreground">No roles</span>
-                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -287,12 +305,96 @@ export function UserManagement() {
           </TabsContent>
         </Tabs>
 
+        {/* Add User Dialog */}
+        <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New User</DialogTitle>
+              <DialogDescription>Create a new user account with a role.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="new-email">Email</Label>
+                <Input
+                  id="new-email"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={addForm.email}
+                  onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Min 6 characters"
+                  value={addForm.password}
+                  onChange={(e) => setAddForm((p) => ({ ...p, password: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-role">Role</Label>
+                <Select value={addForm.role} onValueChange={(v) => setAddForm((p) => ({ ...p, role: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="viewer">Viewer</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="superadmin">Superadmin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddUser(false)}>Cancel</Button>
+              <Button onClick={handleAddUser} disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Create User
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset Password Dialog */}
+        <Dialog open={!!showResetPassword} onOpenChange={() => { setShowResetPassword(null); setNewPassword(""); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+              <DialogDescription>
+                Set a new password for {resetPasswordUser?.email || "this user"}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="reset-pw">New Password</Label>
+                <Input
+                  id="reset-pw"
+                  type="password"
+                  placeholder="Min 6 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setShowResetPassword(null); setNewPassword(""); }}>Cancel</Button>
+              <Button onClick={handleResetPassword} disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Update Password
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation */}
         <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete this user's roles and access. This action cannot be undone.
+                This will permanently delete this user account and all their roles. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
