@@ -49,12 +49,25 @@ export const NotificationLogTab = () => {
 
   const eventBadge = (type: string) => {
     switch (type) {
-      case "ip_down": return <Badge variant="destructive" className="text-xs">Down</Badge>;
-      case "ip_up": return <Badge className="text-xs bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]">Up</Badge>;
-      case "blacklisted": return <Badge variant="destructive" className="text-xs">Blacklisted</Badge>;
-      case "delisted": return <Badge className="text-xs">Delisted</Badge>;
-      case "summary": return <Badge variant="secondary" className="text-xs">Summary</Badge>;
-      default: return <Badge variant="secondary" className="text-xs">{type}</Badge>;
+      case "ip_down":
+      case "sms_ip_down":
+        return <Badge variant="destructive" className="text-xs">Down</Badge>;
+      case "ip_up":
+      case "sms_ip_up":
+        return <Badge className="text-xs bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]">Up</Badge>;
+      case "ip_blacklisted":
+      case "sms_ip_blacklisted":
+        return <Badge variant="destructive" className="text-xs">🚨 Blacklisted</Badge>;
+      case "ip_delisted":
+      case "sms_ip_delisted":
+        return <Badge className="text-xs bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]">✅ Delisted</Badge>;
+      case "daily_summary":
+      case "sms_daily_summary":
+        return <Badge variant="secondary" className="text-xs">📊 Summary</Badge>;
+      case "test":
+        return <Badge variant="outline" className="text-xs">Test</Badge>;
+      default:
+        return <Badge variant="secondary" className="text-xs">{type}</Badge>;
     }
   };
 
