@@ -15,6 +15,7 @@ interface MonitoredIP {
   last_ping_at: string | null;
   last_latency_ms: number | null;
   check_interval_minutes: number | null;
+  check_ports: number[] | null;
   created_at: string;
   reputation?: { reputation_score: number; active_listings: number; total_listings: number; last_scan_at: string | null } | null;
 }
@@ -34,7 +35,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
     try {
       const { data: devices, error } = await supabase
         .from("devices")
-        .select("id, name, ip_address, is_up, last_ping_at, last_latency_ms, check_interval_minutes, created_at")
+        .select("id, name, ip_address, is_up, last_ping_at, last_latency_ms, check_interval_minutes, check_ports, created_at")
         .order("name");
       if (error) throw error;
 
@@ -63,7 +64,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
     setPinging((p) => ({ ...p, [ip.id]: true }));
     try {
       const { data, error } = await supabase.functions.invoke("ping-device", {
-        body: { ip_address: ip.ip_address },
+        body: { ip_address: ip.ip_address, check_ports: ip.check_ports || [80, 443] },
       });
       if (error) throw error;
       const isUp = data?.reachable ?? false;
@@ -214,6 +215,20 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                   />
                   <DetailItem label="Blacklists" value={listings > 0 ? `${listings} active` : "Clean"} valueClass={listings > 0 ? "text-destructive" : "text-[hsl(var(--success))]"} />
                 </div>
+
+                {/* Ports */}
+                {ip.check_ports && ip.check_ports.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Monitored Ports</p>
+                    <div className="flex flex-wrap gap-1">
+                      {ip.check_ports.map((port) => (
+                        <Badge key={port} variant="outline" className="text-xs font-mono">
+                          {port}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <DetailItem label="Check Interval" value={ip.check_interval_minutes ? `${ip.check_interval_minutes} min` : "5 min"} />
