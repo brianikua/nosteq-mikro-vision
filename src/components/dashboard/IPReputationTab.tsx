@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, Search, AlertTriangle, CheckCircle } from "lucide-react";
+import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface Device {
   id: string;
@@ -225,6 +226,231 @@ export const IPReputationTab = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Auto-scan status */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Clock className="h-5 w-5" /> Automated Scanning
+          </CardTitle>
+          <CardDescription>
+            Blacklist scans run automatically every <strong>6 hours</strong> for all devices.
+            Manual scans can be triggered anytime above.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      {/* Anti-Blacklisting Recommendations */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lightbulb className="h-5 w-5 text-[hsl(var(--warning))]" /> Anti-Blacklisting Rules & Recommendations
+          </CardTitle>
+          <CardDescription>
+            MikroTik firewall rules and best practices to prevent your IPs from getting blacklisted.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="multiple" className="w-full">
+            <AccordionItem value="smtp-blocking">
+              <AccordionTrigger className="text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-destructive" />
+                  Block Outbound SMTP (Port 25) — Prevents Spam Blacklisting
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Most blacklistings occur because compromised devices send spam via port 25. Block it for all subscribers except authorized mail servers.
+                  </p>
+                  <pre className="bg-muted p-3 rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+{`/ip firewall filter
+add chain=forward protocol=tcp dst-port=25 \\
+    src-address-list=!authorized-smtp \\
+    action=drop comment="Block outbound SMTP - anti-spam"
+
+/ip firewall address-list
+add list=authorized-smtp address=<mail-server-ip> \\
+    comment="Authorized mail server"`}
+                  </pre>
+                  <Badge variant="destructive" className="text-xs">Critical — #1 cause of blacklisting</Badge>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="dns-amplification">
+              <AccordionTrigger className="text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-[hsl(var(--warning))]" />
+                  Block DNS Amplification Attacks (Port 53)
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Open DNS resolvers are exploited for DDoS amplification attacks, leading to IP blacklisting. Only allow DNS to your resolvers.
+                  </p>
+                  <pre className="bg-muted p-3 rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+{`/ip firewall filter
+add chain=forward protocol=udp dst-port=53 \\
+    dst-address-list=!trusted-dns action=drop \\
+    comment="Block DNS to non-trusted resolvers"
+
+add chain=input protocol=udp dst-port=53 \\
+    in-interface-list=WAN action=drop \\
+    comment="Block external DNS queries to router"
+
+/ip firewall address-list
+add list=trusted-dns address=8.8.8.8 comment="Google DNS"
+add list=trusted-dns address=1.1.1.1 comment="Cloudflare DNS"`}
+                  </pre>
+                  <Badge className="bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))] border-[hsl(var(--warning))]/30 text-xs">High priority</Badge>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="rate-limiting">
+              <AccordionTrigger className="text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-[hsl(var(--warning))]" />
+                  Rate-Limit Outbound Connections — Prevent Botnets & Brute Force
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Limit the number of new outbound connections per subscriber to detect and throttle compromised devices running botnets or brute-force attacks.
+                  </p>
+                  <pre className="bg-muted p-3 rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+{`/ip firewall filter
+add chain=forward protocol=tcp connection-state=new \\
+    connection-limit=100,32 action=add-src-to-address-list \\
+    address-list=rate-limited address-list-timeout=1h \\
+    comment="Detect high connection rate clients"
+
+add chain=forward src-address-list=rate-limited \\
+    action=drop comment="Drop traffic from rate-limited hosts"`}
+                  </pre>
+                  <Badge className="bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))] border-[hsl(var(--warning))]/30 text-xs">High priority</Badge>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="ntp-ssdp">
+              <AccordionTrigger className="text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  Block NTP & SSDP Amplification (Ports 123, 1900)
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    NTP and SSDP protocols are commonly abused for DDoS amplification. Block inbound requests from WAN.
+                  </p>
+                  <pre className="bg-muted p-3 rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+{`/ip firewall filter
+add chain=input protocol=udp dst-port=123 \\
+    in-interface-list=WAN action=drop \\
+    comment="Block NTP amplification from WAN"
+
+add chain=input protocol=udp dst-port=1900 \\
+    in-interface-list=WAN action=drop \\
+    comment="Block SSDP amplification from WAN"
+
+add chain=forward protocol=udp dst-port=1900 \\
+    action=drop comment="Block SSDP forwarding"`}
+                  </pre>
+                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="bogon-filtering">
+              <AccordionTrigger className="text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  Drop Bogon & Spoofed Traffic
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Prevent spoofed source IPs from leaving your network. Many RBLs flag networks that allow spoofed traffic.
+                  </p>
+                  <pre className="bg-muted p-3 rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+{`/ip firewall address-list
+add list=bogons address=0.0.0.0/8 comment="RFC 1122"
+add list=bogons address=10.0.0.0/8 comment="RFC 1918"
+add list=bogons address=100.64.0.0/10 comment="RFC 6598"
+add list=bogons address=127.0.0.0/8 comment="Loopback"
+add list=bogons address=169.254.0.0/16 comment="Link-local"
+add list=bogons address=172.16.0.0/12 comment="RFC 1918"
+add list=bogons address=192.168.0.0/16 comment="RFC 1918"
+add list=bogons address=224.0.0.0/4 comment="Multicast"
+
+/ip firewall filter
+add chain=forward src-address-list=bogons \\
+    out-interface-list=WAN action=drop \\
+    comment="Drop bogon sources going to WAN"`}
+                  </pre>
+                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="port-scan">
+              <AccordionTrigger className="text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  Detect & Block Port Scanning from Subscribers
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Port scanning from your network gets reported to abuse databases. Detect and auto-block scanning hosts.
+                  </p>
+                  <pre className="bg-muted p-3 rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+{`/ip firewall filter
+add chain=forward protocol=tcp psd=21,3s,3,1 \\
+    action=add-src-to-address-list \\
+    address-list=port-scanners address-list-timeout=2w \\
+    comment="Detect port scanners"
+
+add chain=forward src-address-list=port-scanners \\
+    action=drop comment="Block detected port scanners"`}
+                  </pre>
+                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="best-practices">
+              <AccordionTrigger className="text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4 text-[hsl(var(--success))]" />
+                  General Best Practices
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <ul className="list-disc pl-5 space-y-1.5">
+                    <li><strong>Set up rDNS (PTR records)</strong> — Ensure all your public IPs have proper reverse DNS. Missing rDNS is flagged by many RBLs.</li>
+                    <li><strong>Configure SPF, DKIM, DMARC</strong> — If you host mail services, these DNS records prevent your domain from being used in spam.</li>
+                    <li><strong>Monitor abuse@ mailbox</strong> — Respond to abuse complaints within 24 hours to avoid escalation to blacklists.</li>
+                    <li><strong>Implement BCP38/uRPF</strong> — Enable unicast Reverse Path Forwarding to prevent IP spoofing from your network.</li>
+                    <li><strong>Regularly update RouterOS</strong> — Keep MikroTik firmware up to date to patch known vulnerabilities.</li>
+                    <li><strong>Use connection tracking</strong> — Drop invalid connections: <code className="bg-muted px-1 rounded">add chain=forward connection-state=invalid action=drop</code></li>
+                    <li><strong>Request delisting proactively</strong> — After fixing issues, submit delisting requests to Spamhaus, Barracuda, SpamCop, etc.</li>
+                  </ul>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
     </div>
   );
 };
