@@ -911,17 +911,20 @@ export type Database = {
       }
     }
     Functions: {
-      get_device_password: { Args: { p_device_id: string }; Returns: string }
+      decrypt_device_password: {
+        Args: { p_device_id: string }
+        Returns: string
+      }
+      encrypt_device_password: {
+        Args: { p_device_id: string; p_password: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
-      }
-      store_device_password: {
-        Args: { p_device_id: string; p_password: string }
-        Returns: string
       }
     }
     Enums: {
