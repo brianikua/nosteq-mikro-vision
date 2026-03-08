@@ -76,7 +76,7 @@ export const AddIPDialog = ({ open, onOpenChange }: AddIPDialogProps) => {
       if (error) throw error;
       toast.success("IP address added!");
       onOpenChange(false);
-      setFormData({ name: "", ip_address: "" });
+      setFormData({ name: "", ip_address: "", notify_number: "" });
       setPorts([80, 443]);
       window.location.reload();
     } catch (error: any) {
