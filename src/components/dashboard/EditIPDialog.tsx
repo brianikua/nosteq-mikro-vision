@@ -83,6 +83,7 @@ export const EditIPDialog = ({ device, open, onOpenChange, onSaved }: EditIPDial
         ip_address: validated.ip_address,
         check_ports: validated.check_ports,
         check_interval_minutes: validated.check_interval_minutes,
+        notify_number: notifyNumber.trim() || null,
       }).eq("id", device.id);
       if (error) throw error;
       toast.success("Device updated!");
