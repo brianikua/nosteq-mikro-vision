@@ -38,7 +38,7 @@ interface AddIPDialogProps {
 
 export const AddIPDialog = ({ open, onOpenChange }: AddIPDialogProps) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({ name: "", ip_address: "" });
+  const [formData, setFormData] = useState({ name: "", ip_address: "", notify_number: "" });
   const [ports, setPorts] = useState<number[]>([80, 443]);
   const [portInput, setPortInput] = useState("");
 
