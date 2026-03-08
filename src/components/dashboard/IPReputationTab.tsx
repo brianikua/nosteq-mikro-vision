@@ -105,14 +105,18 @@ export const IPReputationTab = () => {
 
   const runScan = async (deviceId?: string) => {
     setScanning(true);
+    setLastScanDetails(null);
     try {
       const { data, error } = await supabase.functions.invoke(
         "check-ip-reputation",
         { body: deviceId ? { device_id: deviceId } : {} }
       );
       if (error) throw error;
+      setLastScanDetails(data.results);
+      const totalChecks = data.results?.reduce((sum: number, r: any) => sum + (r.total_checks || 0), 0) || 0;
+      const totalListings = data.results?.reduce((sum: number, r: any) => sum + (r.listings || 0), 0) || 0;
       toast.success(
-        `Scan complete: ${data.results?.length || 0} device(s) checked`
+        `Scan complete: ${data.results?.length || 0} device(s), ${totalChecks} checks, ${totalListings} listings found`
       );
       queryClient.invalidateQueries({ queryKey: ["ip-reputation-summary"] });
       queryClient.invalidateQueries({ queryKey: ["recent-blacklist-scans"] });
