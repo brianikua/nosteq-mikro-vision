@@ -27,6 +27,13 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .eq("role", "superadmin")
+          .maybeSingle();
+        setIsSuperadmin(!!data);
       }
     };
     checkAuth();
