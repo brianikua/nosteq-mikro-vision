@@ -53,17 +53,21 @@ export const AddDeviceDialog = ({ open, onOpenChange }: AddDeviceDialogProps) =>
       // Validate input
       const validatedData = deviceSchema.parse(formData);
 
-      const { error } = await supabase.from("devices").insert([{
-        name: validatedData.name,
-        ip_address: validatedData.ip_address,
-        username: validatedData.username,
-        password: validatedData.password,
-        port: validatedData.port,
-        model: validatedData.model || null,
-        routeros_version: validatedData.routeros_version || null,
-      }]);
+      const { data, error } = await supabase.functions.invoke("manage-device", {
+        body: {
+          action: "create",
+          name: validatedData.name,
+          ip_address: validatedData.ip_address,
+          username: validatedData.username,
+          password: validatedData.password,
+          port: validatedData.port,
+          model: validatedData.model || null,
+          routeros_version: validatedData.routeros_version || null,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast.success("Device added successfully!");
       onOpenChange(false);

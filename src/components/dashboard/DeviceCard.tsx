@@ -92,22 +92,20 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
     try {
       const validatedData = editSchema.parse(editForm);
 
-      const updateData: Record<string, unknown> = {
-        name: validatedData.name,
-        ip_address: validatedData.ip_address,
-        username: validatedData.username,
-        port: validatedData.port,
-      };
-      if (validatedData.password) {
-        updateData.password = validatedData.password;
-      }
-
-      const { error } = await supabase
-        .from("devices")
-        .update(updateData)
-        .eq("id", device.id);
+      const { data, error } = await supabase.functions.invoke("manage-device", {
+        body: {
+          action: "update",
+          device_id: device.id,
+          name: validatedData.name,
+          ip_address: validatedData.ip_address,
+          username: validatedData.username,
+          port: validatedData.port,
+          password: validatedData.password || undefined,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast.success("Device updated successfully");
       setEditOpen(false);
       window.location.reload();

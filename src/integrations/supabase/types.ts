@@ -329,6 +329,7 @@ export type Database = {
           model: string | null
           name: string
           password: string
+          password_secret_id: string | null
           port: number
           routeros_version: string | null
           updated_at: string
@@ -341,6 +342,7 @@ export type Database = {
           model?: string | null
           name: string
           password: string
+          password_secret_id?: string | null
           port?: number
           routeros_version?: string | null
           updated_at?: string
@@ -353,6 +355,7 @@ export type Database = {
           model?: string | null
           name?: string
           password?: string
+          password_secret_id?: string | null
           port?: number
           routeros_version?: string | null
           updated_at?: string
@@ -908,6 +911,14 @@ export type Database = {
       }
     }
     Functions: {
+      decrypt_device_password: {
+        Args: { p_device_id: string }
+        Returns: string
+      }
+      encrypt_device_password: {
+        Args: { p_device_id: string; p_password: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

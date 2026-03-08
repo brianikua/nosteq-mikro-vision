@@ -196,13 +196,13 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const deviceId = body.device_id;
 
-    // Get devices
+    // Get devices (without password - we decrypt per device)
     let devices: any[] = [];
     if (deviceId) {
-      const { data } = await supabase.from("devices").select("*").eq("id", deviceId);
+      const { data } = await supabase.from("devices").select("id, name, ip_address, port, username").eq("id", deviceId);
       devices = data || [];
     } else {
-      const { data } = await supabase.from("devices").select("*");
+      const { data } = await supabase.from("devices").select("id, name, ip_address, port, username");
       devices = data || [];
     }
 
@@ -210,7 +210,10 @@ Deno.serve(async (req) => {
 
     for (const device of devices) {
       try {
-        const api = new RouterOSAPI(device.ip_address, device.port, device.username, device.password);
+        // Decrypt password from DB
+        const { data: pwData } = await supabase.rpc("decrypt_device_password", { p_device_id: device.id });
+        const decryptedPassword = pwData as string;
+        const api = new RouterOSAPI(device.ip_address, device.port, device.username, decryptedPassword);
 
         const [filterRules, natRules, connections] = await api.execute([
           ["/ip/firewall/filter/print", "=.proplist=.id,chain,action,src-address,dst-address,protocol,dst-port,src-port,in-interface,out-interface,comment,disabled,bytes,packets"],
@@ -279,7 +282,7 @@ Deno.serve(async (req) => {
 
         try {
           const [allConns, tcpResults, udpResults, icmpResults] = await new RouterOSAPI(
-            device.ip_address, device.port, device.username, device.password
+            device.ip_address, device.port, device.username, decryptedPassword
           ).execute([
             ["/ip/firewall/connection/print", "=count-only="],
             ["/ip/firewall/connection/print", "=count-only=", "?protocol=tcp"],
@@ -306,7 +309,7 @@ Deno.serve(async (req) => {
 
         // Fetch recent firewall log entries
         try {
-          const logApi = new RouterOSAPI(device.ip_address, device.port, device.username, device.password);
+          const logApi = new RouterOSAPI(device.ip_address, device.port, device.username, decryptedPassword);
           const [logEntries] = await logApi.execute([
             ["/log/print", "?topics~firewall", "=.proplist=time,message"],
           ]);
