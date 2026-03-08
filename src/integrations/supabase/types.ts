@@ -66,7 +66,7 @@ export type Database = {
           last_latency_ms: number | null
           last_ping_at: string | null
           name: string
-          notify_number: string | null
+          notify_number: string[] | null
           updated_at: string
         }
         Insert: {
@@ -79,7 +79,7 @@ export type Database = {
           last_latency_ms?: number | null
           last_ping_at?: string | null
           name: string
-          notify_number?: string | null
+          notify_number?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -92,7 +92,7 @@ export type Database = {
           last_latency_ms?: number | null
           last_ping_at?: string | null
           name?: string
-          notify_number?: string | null
+          notify_number?: string[] | null
           updated_at?: string
         }
         Relationships: []
