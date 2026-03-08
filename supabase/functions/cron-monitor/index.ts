@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
     // Fetch all devices
     const { data: devices, error: devError } = await supabase
       .from("devices")
-      .select("id, name, ip_address, is_up, check_ports")
+      .select("id, name, ip_address, is_up, check_ports, notify_number")
       .order("name");
 
     if (devError) throw devError;
