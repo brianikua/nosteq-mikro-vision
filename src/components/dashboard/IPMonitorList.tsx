@@ -310,6 +310,12 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
           </Collapsible>
         );
       })}
+      <EditIPDialog
+        device={editDevice}
+        open={!!editDevice}
+        onOpenChange={(open) => { if (!open) setEditDevice(null); }}
+        onSaved={fetchIPs}
+      />
     </div>
   );
 };
