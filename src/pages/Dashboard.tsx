@@ -21,6 +21,10 @@ const Dashboard = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
   const [isSuperadmin, setIsSuperadmin] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
 
 
   useEffect(() => {
