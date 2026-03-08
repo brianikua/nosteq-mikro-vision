@@ -60,15 +60,15 @@ export const IPReputationTab = () => {
 
       const { data: scans } = await supabase
         .from("blacklist_scans")
-        .select("provider, status, confidence_score, raw_response")
+        .select("provider, confidence_score, raw_response")
         .eq("device_id", selectedDevice)
         .order("scanned_at", { ascending: false })
         .limit(50);
 
       if (scans) {
-        setLastResults(scans.map((s) => ({
+        setLastResults(scans.map((s: any) => ({
           provider: s.provider,
-          listed: s.status === "listed",
+          listed: (s.confidence_score ?? 0) > 0,
           confidence: s.confidence_score ?? 0,
           type: "check",
           category: null,
