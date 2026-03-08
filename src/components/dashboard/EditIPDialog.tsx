@@ -28,6 +28,7 @@ interface Device {
   ip_address: string;
   check_ports: number[] | null;
   check_interval_minutes: number | null;
+  notify_number: string | null;
 }
 
 interface EditIPDialogProps {
@@ -44,6 +45,7 @@ export const EditIPDialog = ({ device, open, onOpenChange, onSaved }: EditIPDial
   const [interval, setInterval] = useState(5);
   const [ports, setPorts] = useState<number[]>([80, 443]);
   const [portInput, setPortInput] = useState("");
+  const [notifyNumber, setNotifyNumber] = useState("");
 
   useEffect(() => {
     if (device) {
@@ -51,6 +53,7 @@ export const EditIPDialog = ({ device, open, onOpenChange, onSaved }: EditIPDial
       setIpAddress(device.ip_address);
       setPorts(device.check_ports ?? [80, 443]);
       setInterval(device.check_interval_minutes ?? 5);
+      setNotifyNumber(device.notify_number ?? "");
     }
   }, [device]);
 
@@ -80,6 +83,7 @@ export const EditIPDialog = ({ device, open, onOpenChange, onSaved }: EditIPDial
         ip_address: validated.ip_address,
         check_ports: validated.check_ports,
         check_interval_minutes: validated.check_interval_minutes,
+        notify_number: notifyNumber.trim() || null,
       }).eq("id", device.id);
       if (error) throw error;
       toast.success("Device updated!");
@@ -112,6 +116,11 @@ export const EditIPDialog = ({ device, open, onOpenChange, onSaved }: EditIPDial
           <div className="space-y-2">
             <Label htmlFor="edit-interval">Check Interval (minutes)</Label>
             <Input id="edit-interval" type="number" min={1} max={1440} value={interval} onChange={(e) => setInterval(Number(e.target.value))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-notify">SMS Notify Number <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Input id="edit-notify" placeholder="+1234567890" value={notifyNumber} onChange={(e) => setNotifyNumber(e.target.value)} />
+            <p className="text-xs text-muted-foreground">Phone number to receive SMS when this IP goes down.</p>
           </div>
 
           <div className="space-y-2">

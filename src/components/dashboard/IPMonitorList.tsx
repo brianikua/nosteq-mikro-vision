@@ -26,6 +26,7 @@ interface MonitoredIP {
   last_latency_ms: number | null;
   check_interval_minutes: number | null;
   check_ports: number[] | null;
+  notify_number: string | null;
   created_at: string;
   reputation?: { reputation_score: number; active_listings: number; total_listings: number; last_scan_at: string | null } | null;
 }
@@ -47,7 +48,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
     try {
       const { data: devices, error } = await supabase
         .from("devices")
-        .select("id, name, ip_address, is_up, last_ping_at, last_latency_ms, check_interval_minutes, check_ports, created_at")
+        .select("id, name, ip_address, is_up, last_ping_at, last_latency_ms, check_interval_minutes, check_ports, notify_number, created_at")
         .order("name");
       if (error) throw error;
 

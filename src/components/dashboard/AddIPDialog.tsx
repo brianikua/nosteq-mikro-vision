@@ -38,7 +38,7 @@ interface AddIPDialogProps {
 
 export const AddIPDialog = ({ open, onOpenChange }: AddIPDialogProps) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({ name: "", ip_address: "" });
+  const [formData, setFormData] = useState({ name: "", ip_address: "", notify_number: "" });
   const [ports, setPorts] = useState<number[]>([80, 443]);
   const [portInput, setPortInput] = useState("");
 
@@ -71,11 +71,12 @@ export const AddIPDialog = ({ open, onOpenChange }: AddIPDialogProps) => {
         name: validated.name,
         ip_address: validated.ip_address,
         check_ports: validated.check_ports,
+        notify_number: formData.notify_number.trim() || null,
       }]);
       if (error) throw error;
       toast.success("IP address added!");
       onOpenChange(false);
-      setFormData({ name: "", ip_address: "" });
+      setFormData({ name: "", ip_address: "", notify_number: "" });
       setPorts([80, 443]);
       window.location.reload();
     } catch (error: any) {
@@ -117,6 +118,16 @@ export const AddIPDialog = ({ open, onOpenChange }: AddIPDialogProps) => {
               onChange={(e) => setFormData({ ...formData, ip_address: e.target.value })}
               required
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="notify_number">SMS Notify Number <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Input
+              id="notify_number"
+              placeholder="+1234567890"
+              value={formData.notify_number}
+              onChange={(e) => setFormData({ ...formData, notify_number: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">Phone number to receive SMS when this IP goes down.</p>
           </div>
 
           {/* Ports section */}

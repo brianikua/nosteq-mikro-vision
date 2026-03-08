@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
     // Fetch all devices
     const { data: devices, error: devError } = await supabase
       .from("devices")
-      .select("id, name, ip_address, is_up, check_ports")
+      .select("id, name, ip_address, is_up, check_ports, notify_number")
       .order("name");
 
     if (devError) throw devError;
@@ -254,12 +254,13 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Send SMS alert on status change
+      // Send SMS alert on status change (per-device number or global fallback)
       if (statusChanged && smsEnabled) {
         const isDown = !reachable;
         const shouldNotify = isDown ? smsConfig.notify_down : smsConfig.notify_up;
+        const smsNumber = device.notify_number || smsConfig.client_number;
 
-        if (shouldNotify) {
+        if (shouldNotify && smsNumber) {
           const emoji = isDown ? "🔴" : "🟢";
           const status = isDown ? "DOWN" : "UP";
           const template = smsConfig.message_template || "{{status_emoji}} {{device_name}} ({{ip_address}}) is {{status}}. Latency: {{latency}}ms";
@@ -273,7 +274,7 @@ Deno.serve(async (req) => {
             isp_number: smsConfig.isp_contact_number || "N/A",
           });
 
-          const sent = await sendSmsWebhook(smsConfig, smsConfig.client_number, smsMessage);
+          const sent = await sendSmsWebhook(smsConfig, smsNumber, smsMessage);
 
           await supabase.from("notification_log").insert({
             event_type: isDown ? "sms_ip_down" : "sms_ip_up",
