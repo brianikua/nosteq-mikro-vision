@@ -209,7 +209,7 @@ export const IPReputationTab = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card className="bg-card border-border/50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -254,6 +254,17 @@ export const IPReputationTab = () => {
         <Card className="bg-card border-border/50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
+              <Database className="h-8 w-8 text-primary" />
+              <div>
+                <p className="text-2xl font-bold font-mono">34+</p>
+                <p className="text-xs text-muted-foreground">Providers Checked</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border/50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
               <Clock className="h-8 w-8 text-muted-foreground" />
               <div>
                 <p className="text-2xl font-bold font-mono">
@@ -266,6 +277,71 @@ export const IPReputationTab = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Provider Coverage */}
+      <Card className="bg-card border-border/50">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Server className="h-5 w-5" /> Provider Coverage
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Wifi className="h-4 w-4 text-primary" />
+                <span>DNSBL Providers (29)</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {["Spamhaus ZEN", "Spamhaus SBL", "Spamhaus XBL", "Spamhaus PBL", "Barracuda", "SpamCop", "SORBS Combined", "SORBS Spam", "SORBS New Spam", "SORBS Recent", "UCEProtect L1-L3", "CBL", "PSBL", "DroneBL", "WPBL", "Mailspike", "NiX Spam", "TruncateGBUDB", "abuse.ch", "InterServer", "0spam", "s5h.net", "INPS", "Blocklist.de", "DNSRBL", "HostKarma", "UBL"].map(p => (
+                  <Badge key={p} variant="outline" className="text-[10px] px-1.5 py-0">
+                    {p}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Server className="h-4 w-4 text-primary" />
+                <span>API Providers (up to 3)</span>
+              </div>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                <p>• <strong>AbuseIPDB</strong> – Abuse reports & confidence scoring</p>
+                <p>• <strong>VirusTotal</strong> – 70+ antivirus engine analysis</p>
+                <p>• <strong>IPQualityScore</strong> – Fraud, proxy, VPN & bot detection</p>
+              </div>
+              <p className="text-xs text-muted-foreground italic">API keys required for these providers</p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Globe className="h-4 w-4 text-primary" />
+                <span>Web Checks (2)</span>
+              </div>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                <p>• <strong>IP-API</strong> – Proxy/VPN/hosting detection</p>
+                <p>• <strong>Blocklist.de</strong> – Attack report database</p>
+              </div>
+              <p className="text-xs text-muted-foreground italic">Free, no API key needed</p>
+            </div>
+          </div>
+          {lastScanDetails && lastScanDetails.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-border/50">
+              <p className="text-sm font-medium mb-2">Last Scan Breakdown:</p>
+              <div className="flex flex-wrap gap-3">
+                {lastScanDetails.map((r: any) => (
+                  <div key={r.device} className="text-xs bg-muted/50 rounded px-3 py-2">
+                    <p className="font-medium">{r.device} ({r.ip})</p>
+                    <p className="text-muted-foreground">
+                      DNSBL: {r.by_type?.dnsbl?.listed || 0}/{r.by_type?.dnsbl?.checked || 0} •
+                      API: {r.by_type?.api?.listed || 0}/{r.by_type?.api?.checked || 0} •
+                      Web: {r.by_type?.web?.listed || 0}/{r.by_type?.web?.checked || 0}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
       </div>
 
       {/* Reputation Table */}
