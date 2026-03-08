@@ -101,24 +101,6 @@ const Dashboard = () => {
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex items-center gap-1 bg-card border border-border/50 rounded-lg p-1">
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "default" : "ghost"}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setViewMode("table")}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
 
           <TabsContent value="monitor">
