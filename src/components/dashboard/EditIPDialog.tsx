@@ -117,6 +117,11 @@ export const EditIPDialog = ({ device, open, onOpenChange, onSaved }: EditIPDial
             <Label htmlFor="edit-interval">Check Interval (minutes)</Label>
             <Input id="edit-interval" type="number" min={1} max={1440} value={interval} onChange={(e) => setInterval(Number(e.target.value))} />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-notify">SMS Notify Number <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Input id="edit-notify" placeholder="+1234567890" value={notifyNumber} onChange={(e) => setNotifyNumber(e.target.value)} />
+            <p className="text-xs text-muted-foreground">Phone number to receive SMS when this IP goes down.</p>
+          </div>
 
           <div className="space-y-2">
             <Label>Ports to Check</Label>
