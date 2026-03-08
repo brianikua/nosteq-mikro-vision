@@ -28,41 +28,54 @@ async function pollCheckHost(requestId: string, maxAttempts = 3): Promise<Record
  * Probe host using check-host.net ICMP ping + TCP checks.
  * Tries ping first, falls back to TCP port check.
  */
-async function probeHost(ip: string): Promise<{ reachable: boolean; latency_ms: number; method: string }> {
-  // Launch both ICMP and TCP checks in parallel
-  const [pingReq, tcpReq] = await Promise.all([
-    fetch(`https://check-host.net/check-ping?host=${ip}&max_nodes=3`, {
-      headers: { Accept: "application/json" },
-    }).catch(() => null),
-    fetch(`https://check-host.net/check-tcp?host=${ip}:80&max_nodes=3`, {
-      headers: { Accept: "application/json" },
-    }).catch(() => null),
-  ]);
+async function probeHost(ip: string, ports: number[] = [80, 443]): Promise<{ reachable: boolean; latency_ms: number; method: string; open_ports: number[] }> {
+  const open_ports: number[] = [];
+
+  // Launch ICMP ping
+  const pingReq = await fetch(`https://check-host.net/check-ping?host=${ip}&max_nodes=3`, {
+    headers: { Accept: "application/json" },
+  }).catch(() => null);
 
   const pingId = pingReq?.ok ? (await pingReq.json()).request_id : null;
-  const tcpId = tcpReq?.ok ? (await tcpReq.json()).request_id : null;
 
-  console.log(`Check IDs - ping: ${pingId}, tcp: ${tcpId}`);
+  // Launch TCP checks for all specified ports in parallel (max 3 to avoid rate limits)
+  const tcpChecks = await Promise.all(
+    ports.slice(0, 5).map(async (port) => {
+      try {
+        const res = await fetch(`https://check-host.net/check-tcp?host=${ip}:${port}&max_nodes=2`, {
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) return { port, requestId: null };
+        const data = await res.json();
+        return { port, requestId: data.request_id || null };
+      } catch {
+        return { port, requestId: null };
+      }
+    })
+  );
 
-  // Poll both in parallel
-  const [pingData, tcpData] = await Promise.all([
+  console.log(`Check IDs - ping: ${pingId}, tcp ports: ${tcpChecks.map(t => `${t.port}:${t.requestId}`).join(", ")}`);
+
+  // Poll all in parallel
+  const [pingData, ...tcpResults] = await Promise.all([
     pingId ? pollCheckHost(pingId) : Promise.resolve({}),
-    tcpId ? pollCheckHost(tcpId) : Promise.resolve({}),
+    ...tcpChecks.map(async (tc) => {
+      if (!tc.requestId) return { port: tc.port, data: {} };
+      const data = await pollCheckHost(tc.requestId);
+      return { port: tc.port, data };
+    }),
   ]);
 
   console.log("Ping results:", JSON.stringify(pingData));
-  console.log("TCP results:", JSON.stringify(tcpData));
 
-  // Parse ICMP ping results
+  // Parse ICMP results
   let pingSuccess = 0;
-  let pingTotal = 0;
   let totalLatency = 0;
 
   for (const [, nodeResult] of Object.entries(pingData)) {
     if (!Array.isArray(nodeResult) || nodeResult.length === 0) continue;
     const pings = Array.isArray(nodeResult[0]) ? nodeResult[0] : nodeResult;
     for (const ping of pings as any[]) {
-      pingTotal++;
       if (Array.isArray(ping) && ping[0] === "OK") {
         pingSuccess++;
         totalLatency += ping[1] * 1000;
@@ -70,53 +83,43 @@ async function probeHost(ip: string): Promise<{ reachable: boolean; latency_ms: 
     }
   }
 
+  // Parse TCP results
+  let bestTcpLatency = Infinity;
+  for (const tcpResult of tcpResults) {
+    const { port, data } = tcpResult as { port: number; data: Record<string, any> };
+    for (const [, nodeResult] of Object.entries(data)) {
+      if (!Array.isArray(nodeResult) || nodeResult.length === 0) continue;
+      const result = nodeResult[0];
+      if (result && typeof result === "object" && result.time !== undefined && !result.error) {
+        open_ports.push(port);
+        const latency = result.time * 1000;
+        if (latency < bestTcpLatency) bestTcpLatency = latency;
+        break; // One successful node per port is enough
+      }
+    }
+    console.log(`TCP ${port} results:`, JSON.stringify(data));
+  }
+
+  // Return best result
   if (pingSuccess > 0) {
     return {
       reachable: true,
       latency_ms: Math.round(totalLatency / pingSuccess),
       method: "icmp",
+      open_ports: [...new Set(open_ports)],
     };
   }
 
-  // Parse TCP results: each node returns {"address":"ip","time":0.123} or {"error":"..."}
-  for (const [, nodeResult] of Object.entries(tcpData)) {
-    if (!Array.isArray(nodeResult) || nodeResult.length === 0) continue;
-    const result = nodeResult[0];
-    if (result && typeof result === "object" && result.time !== undefined && !result.error) {
-      return {
-        reachable: true,
-        latency_ms: Math.round(result.time * 1000),
-        method: "tcp",
-      };
-    }
+  if (open_ports.length > 0) {
+    return {
+      reachable: true,
+      latency_ms: Math.round(bestTcpLatency),
+      method: `tcp-${open_ports[0]}`,
+      open_ports: [...new Set(open_ports)],
+    };
   }
 
-  // Also try TCP on port 443 and 8291 (common MikroTik/Winbox port)
-  try {
-    const extraTcp = await fetch(`https://check-host.net/check-tcp?host=${ip}:443&max_nodes=2`, {
-      headers: { Accept: "application/json" },
-    });
-    if (extraTcp.ok) {
-      const extraData = await extraTcp.json();
-      if (extraData.request_id) {
-        const extraResults = await pollCheckHost(extraData.request_id, 2);
-        console.log("TCP 443 results:", JSON.stringify(extraResults));
-        for (const [, nodeResult] of Object.entries(extraResults)) {
-          if (!Array.isArray(nodeResult) || nodeResult.length === 0) continue;
-          const result = nodeResult[0];
-          if (result && typeof result === "object" && result.time !== undefined && !result.error) {
-            return {
-              reachable: true,
-              latency_ms: Math.round(result.time * 1000),
-              method: "tcp-443",
-            };
-          }
-        }
-      }
-    }
-  } catch {}
-
-  return { reachable: false, latency_ms: 0, method: "none" };
+  return { reachable: false, latency_ms: 0, method: "none", open_ports: [] };
 }
 
 Deno.serve(async (req) => {
