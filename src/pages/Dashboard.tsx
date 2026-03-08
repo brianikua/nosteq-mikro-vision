@@ -16,7 +16,7 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  
 
   useEffect(() => {
     const checkAuth = async () => {
