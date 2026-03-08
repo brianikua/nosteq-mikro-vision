@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
+import { z } from "zod";
 
 interface DeviceCardProps {
   device: {
@@ -74,17 +75,31 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
     }
   };
 
+  const editSchema = z.object({
+    name: z.string().trim().min(1, "Device name is required").max(100, "Device name must be less than 100 characters"),
+    ip_address: z.string().trim().refine((ip) => {
+      const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+      const ipv6Regex = /^(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}$/;
+      return ipv4Regex.test(ip) || ipv6Regex.test(ip);
+    }, "Invalid IP address format"),
+    username: z.string().trim().min(1, "Username is required").max(50, "Username must be less than 50 characters"),
+    password: z.string().max(100, "Password must be less than 100 characters").optional().or(z.literal("")),
+    port: z.number().int().min(1, "Port must be between 1 and 65535").max(65535, "Port must be between 1 and 65535"),
+  });
+
   const handleEdit = async () => {
     setSaving(true);
     try {
+      const validatedData = editSchema.parse(editForm);
+
       const updateData: Record<string, unknown> = {
-        name: editForm.name,
-        ip_address: editForm.ip_address,
-        username: editForm.username,
-        port: editForm.port,
+        name: validatedData.name,
+        ip_address: validatedData.ip_address,
+        username: validatedData.username,
+        port: validatedData.port,
       };
-      if (editForm.password) {
-        updateData.password = editForm.password;
+      if (validatedData.password) {
+        updateData.password = validatedData.password;
       }
 
       const { error } = await supabase
@@ -97,8 +112,12 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
       setEditOpen(false);
       window.location.reload();
     } catch (error) {
-      console.error("Error updating device:", error);
-      toast.error("Failed to update device");
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        console.error("Error updating device:", error);
+        toast.error("Failed to update device");
+      }
     } finally {
       setSaving(false);
     }

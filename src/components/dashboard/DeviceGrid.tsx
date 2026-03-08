@@ -38,7 +38,7 @@ export const DeviceGrid = ({ refreshTrigger }: DeviceGridProps) => {
     try {
       const { data: devicesData, error: devicesError } = await supabase
         .from("devices")
-        .select("*")
+        .select("id, name, ip_address, model, routeros_version, port, username")
         .order("name");
 
       if (devicesError) throw devicesError;
