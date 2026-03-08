@@ -53,6 +53,7 @@ export const EditIPDialog = ({ device, open, onOpenChange, onSaved }: EditIPDial
       setIpAddress(device.ip_address);
       setPorts(device.check_ports ?? [80, 443]);
       setInterval(device.check_interval_minutes ?? 5);
+      setNotifyNumber(device.notify_number ?? "");
     }
   }, [device]);
 
