@@ -256,7 +256,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                                 ? isOpen ? "bg-[hsl(var(--success))]" : "bg-destructive"
                                 : "bg-muted-foreground"
                             )} />
-                            {port}
+                            {port}{PORT_LABELS[port] ? ` ${PORT_LABELS[port]}` : ""}
                           </Badge>
                         );
                       })}
