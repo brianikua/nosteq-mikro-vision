@@ -1,0 +1,1 @@
+ALTER TABLE public.devices ADD COLUMN check_ports integer[] DEFAULT ARRAY[80, 443];

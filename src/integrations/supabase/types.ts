@@ -58,6 +58,7 @@ export type Database = {
       devices: {
         Row: {
           check_interval_minutes: number | null
+          check_ports: number[] | null
           created_at: string
           id: string
           ip_address: string
@@ -69,6 +70,7 @@ export type Database = {
         }
         Insert: {
           check_interval_minutes?: number | null
+          check_ports?: number[] | null
           created_at?: string
           id?: string
           ip_address: string
@@ -80,6 +82,7 @@ export type Database = {
         }
         Update: {
           check_interval_minutes?: number | null
+          check_ports?: number[] | null
           created_at?: string
           id?: string
           ip_address?: string
