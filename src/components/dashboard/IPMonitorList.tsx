@@ -70,12 +70,14 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
       if (error) throw error;
       const isUp = data?.reachable ?? false;
       const latency = data?.latency_ms ?? 0;
+      const detectedOpenPorts: number[] = data?.open_ports ?? [];
+      setOpenPorts((prev) => ({ ...prev, [ip.id]: detectedOpenPorts }));
       await supabase.from("devices").update({
         is_up: isUp,
         last_ping_at: new Date().toISOString(),
         last_latency_ms: latency,
       }).eq("id", ip.id);
-      toast[isUp ? "success" : "error"](`${ip.name}: ${isUp ? `Up (${latency}ms)` : "Down"}`);
+      toast[isUp ? "success" : "error"](`${ip.name}: ${isUp ? `Up (${latency}ms)` : "Down"}${detectedOpenPorts.length ? ` | Ports: ${detectedOpenPorts.join(",")}` : ""}`);
       fetchIPs();
     } catch {
       toast.error("Ping failed");
