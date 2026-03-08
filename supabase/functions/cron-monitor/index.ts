@@ -283,6 +283,7 @@ Deno.serve(async (req) => {
             error_message: sent ? null : "SMS webhook failed",
           });
         }
+      }
 
       results.push({
         name: device.name,
