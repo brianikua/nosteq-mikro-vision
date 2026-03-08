@@ -309,7 +309,7 @@ Deno.serve(async (req) => {
 
         // Fetch recent firewall log entries
         try {
-          const logApi = new RouterOSAPI(device.ip_address, device.port, device.username, device.password);
+          const logApi = new RouterOSAPI(device.ip_address, device.port, device.username, decryptedPassword);
           const [logEntries] = await logApi.execute([
             ["/log/print", "?topics~firewall", "=.proplist=time,message"],
           ]);

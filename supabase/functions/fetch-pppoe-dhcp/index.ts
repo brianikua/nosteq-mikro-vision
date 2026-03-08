@@ -151,10 +151,10 @@ Deno.serve(async (req) => {
 
     let devices: any[] = [];
     if (deviceId) {
-      const { data } = await supabase.from("devices").select("*").eq("id", deviceId);
+      const { data } = await supabase.from("devices").select("id, name, ip_address, port, username").eq("id", deviceId);
       devices = data || [];
     } else {
-      const { data } = await supabase.from("devices").select("*");
+      const { data } = await supabase.from("devices").select("id, name, ip_address, port, username");
       devices = data || [];
     }
 
@@ -162,7 +162,10 @@ Deno.serve(async (req) => {
 
     for (const device of devices) {
       try {
-        const api = new RouterOSAPI(device.ip_address, device.port, device.username, device.password);
+        // Decrypt password from DB
+        const { data: pwData } = await supabase.rpc("decrypt_device_password", { p_device_id: device.id });
+        const decryptedPassword = pwData as string;
+        const api = new RouterOSAPI(device.ip_address, device.port, device.username, decryptedPassword);
 
         const [pppoeActive, dhcpLeases, arpEntries] = await api.execute([
           ["/ppp/active/print", "=.proplist=.id,name,service,caller-id,address,uptime,encoding"],
