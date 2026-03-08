@@ -7,6 +7,15 @@ import { Loader2, Wifi, Trash2, Shield, Clock, ChevronDown, Globe } from "lucide
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+const PORT_LABELS: Record<number, string> = {
+  21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP", 53: "DNS",
+  80: "HTTP", 110: "POP3", 143: "IMAP", 443: "HTTPS", 445: "SMB",
+  993: "IMAPS", 995: "POP3S", 1433: "MSSQL", 1723: "PPTP",
+  3306: "MySQL", 3389: "RDP", 5432: "Postgres", 5900: "VNC",
+  8080: "HTTP-Alt", 8291: "Winbox", 8443: "HTTPS-Alt",
+  8728: "MikroTik", 8729: "MikroTik-S",
+};
+
 interface MonitoredIP {
   id: string;
   name: string;
