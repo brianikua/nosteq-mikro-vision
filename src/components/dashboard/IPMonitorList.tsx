@@ -216,6 +216,20 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                   <DetailItem label="Blacklists" value={listings > 0 ? `${listings} active` : "Clean"} valueClass={listings > 0 ? "text-destructive" : "text-[hsl(var(--success))]"} />
                 </div>
 
+                {/* Ports */}
+                {ip.check_ports && ip.check_ports.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Monitored Ports</p>
+                    <div className="flex flex-wrap gap-1">
+                      {ip.check_ports.map((port) => (
+                        <Badge key={port} variant="outline" className="text-xs font-mono">
+                          {port}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <DetailItem label="Check Interval" value={ip.check_interval_minutes ? `${ip.check_interval_minutes} min` : "5 min"} />
                   <DetailItem label="Last Check" value={ip.last_ping_at ? new Date(ip.last_ping_at).toLocaleString() : "Never"} />
