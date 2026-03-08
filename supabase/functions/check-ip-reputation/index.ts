@@ -117,7 +117,44 @@ async function checkIPApi(ip: string): Promise<BlacklistResult> {
   }
 }
 
-// ── Blocklist.de check ──
+// ── Telegram helper ──
+function escMd(text: string): string {
+  return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, "\\$1");
+}
+
+async function sendTelegram(botToken: string, chatId: string, message: string): Promise<boolean> {
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "MarkdownV2" }),
+    });
+    const data = await res.json();
+    return data.ok === true;
+  } catch { return false; }
+}
+
+// ── SMS webhook helper ──
+async function sendSmsWebhook(config: any, phone: string, message: string): Promise<boolean> {
+  try {
+    let res: Response;
+    if (config.webhook_method === "GET") {
+      const url = new URL(config.webhook_url);
+      url.searchParams.set("phone_number", phone);
+      url.searchParams.set("message", message);
+      res = await fetch(url.toString());
+    } else {
+      res = await fetch(config.webhook_url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone_number: phone, message }),
+      });
+    }
+    return res.ok;
+  } catch { return false; }
+}
+
+
 async function checkBlocklistDe(ip: string): Promise<BlacklistResult> {
   try {
     const res = await fetch(`http://api.blocklist.de/api.php?ip=${encodeURIComponent(ip)}&start=1`);
