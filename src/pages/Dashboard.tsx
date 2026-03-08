@@ -102,6 +102,12 @@ const Dashboard = () => {
             <TabsTrigger value="devices" className="flex items-center gap-2">
               <Activity className="h-4 w-4" /> Devices
             </TabsTrigger>
+            <TabsTrigger value="pppoe" className="flex items-center gap-2">
+              <Wifi className="h-4 w-4" /> PPPoE Sessions
+            </TabsTrigger>
+            <TabsTrigger value="dhcp-arp" className="flex items-center gap-2">
+              <Server className="h-4 w-4" /> DHCP & ARP
+            </TabsTrigger>
             <TabsTrigger value="firewall" className="flex items-center gap-2">
               <Flame className="h-4 w-4" /> Firewall & NAT
             </TabsTrigger>
@@ -112,6 +118,14 @@ const Dashboard = () => {
 
           <TabsContent value="devices">
             <DeviceGrid refreshTrigger={refreshing} />
+          </TabsContent>
+
+          <TabsContent value="pppoe">
+            <PPPoESessionsTab />
+          </TabsContent>
+
+          <TabsContent value="dhcp-arp">
+            <DHCPARPTab />
           </TabsContent>
 
           <TabsContent value="firewall">
