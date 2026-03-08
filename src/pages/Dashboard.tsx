@@ -3,9 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Users, LayoutGrid, List } from "lucide-react";
-import { IPMonitorGrid } from "@/components/dashboard/IPMonitorGrid";
-import { IPMonitorTable } from "@/components/dashboard/IPMonitorTable";
+import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Users } from "lucide-react";
+import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
 import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab";
@@ -17,7 +16,7 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -102,32 +101,10 @@ const Dashboard = () => {
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex items-center gap-1 bg-card border border-border/50 rounded-lg p-1">
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "default" : "ghost"}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setViewMode("table")}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
 
           <TabsContent value="monitor">
-            {viewMode === "grid" ? (
-              <IPMonitorGrid refreshTrigger={refreshTrigger} />
-            ) : (
-              <IPMonitorTable refreshTrigger={refreshTrigger} />
-            )}
+            <IPMonitorList refreshTrigger={refreshTrigger} />
           </TabsContent>
 
           <TabsContent value="reputation">
