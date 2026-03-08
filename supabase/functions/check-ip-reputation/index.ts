@@ -117,7 +117,44 @@ async function checkIPApi(ip: string): Promise<BlacklistResult> {
   }
 }
 
-// ── Blocklist.de check ──
+// ── Telegram helper ──
+function escMd(text: string): string {
+  return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, "\\$1");
+}
+
+async function sendTelegram(botToken: string, chatId: string, message: string): Promise<boolean> {
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "MarkdownV2" }),
+    });
+    const data = await res.json();
+    return data.ok === true;
+  } catch { return false; }
+}
+
+// ── SMS webhook helper ──
+async function sendSmsWebhook(config: any, phone: string, message: string): Promise<boolean> {
+  try {
+    let res: Response;
+    if (config.webhook_method === "GET") {
+      const url = new URL(config.webhook_url);
+      url.searchParams.set("phone_number", phone);
+      url.searchParams.set("message", message);
+      res = await fetch(url.toString());
+    } else {
+      res = await fetch(config.webhook_url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone_number: phone, message }),
+      });
+    }
+    return res.ok;
+  } catch { return false; }
+}
+
+
 async function checkBlocklistDe(ip: string): Promise<BlacklistResult> {
   try {
     const res = await fetch(`http://api.blocklist.de/api.php?ip=${encodeURIComponent(ip)}&start=1`);
@@ -224,8 +261,15 @@ Deno.serve(async (req) => {
     const abuseIPDBKey = Deno.env.get("ABUSEIPDB_API_KEY");
     const virusTotalKey = Deno.env.get("VIRUSTOTAL_API_KEY");
     const ipqsKey = Deno.env.get("IPQUALITYSCORE_API_KEY");
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Fetch notification configs
+    const { data: tgConfig } = await supabase.from("telegram_config").select("*").limit(1).maybeSingle();
+    const { data: smsConfig } = await supabase.from("sms_config").select("*").limit(1).maybeSingle();
+    const telegramEnabled = tgConfig?.enabled && tgConfig?.chat_id && botToken && tgConfig?.notify_blacklisted;
+    const smsEnabled = smsConfig?.enabled && smsConfig?.webhook_url && smsConfig?.client_number && smsConfig?.notify_blacklisted;
 
     const body = await req.json().catch(() => ({}));
     const deviceId = body.device_id;
@@ -241,10 +285,10 @@ Deno.serve(async (req) => {
 
     let devices: any[] = [];
     if (deviceId) {
-      const { data } = await supabase.from("devices").select("id, name, ip_address").eq("id", deviceId);
+      const { data } = await supabase.from("devices").select("id, name, ip_address, notify_number").eq("id", deviceId);
       devices = data || [];
     } else {
-      const { data } = await supabase.from("devices").select("id, name, ip_address");
+      const { data } = await supabase.from("devices").select("id, name, ip_address, notify_number");
       devices = data || [];
     }
 
@@ -292,6 +336,16 @@ Deno.serve(async (req) => {
       if (virusTotalKey) checks.push(checkVirusTotal(ipToCheck, virusTotalKey));
       if (ipqsKey) checks.push(checkIPQualityScore(ipToCheck, ipqsKey));
 
+      // Fetch previous listed providers for comparison (before storing new results)
+      const { data: prevScans } = await supabase
+        .from("blacklist_scans")
+        .select("provider, confidence_score")
+        .eq("device_id", device.id)
+        .gt("confidence_score", 0)
+        .order("scanned_at", { ascending: false })
+        .limit(100);
+      const previouslyListed = new Set((prevScans || []).map((s: any) => s.provider));
+
       const scanResults = await Promise.all(checks);
 
       // ── Store results ──
@@ -307,6 +361,104 @@ Deno.serve(async (req) => {
         })
       );
       await Promise.all(insertPromises);
+
+      // ── Detect NEW blacklistings ──
+      const newListings = scanResults.filter((r) => r.listed && !previouslyListed.has(r.provider));
+      const delistings = [...previouslyListed].filter(
+        (provider) => !scanResults.find((r) => r.provider === provider && r.listed)
+      );
+
+      // ── Send notifications for new blacklistings ──
+      if (newListings.length > 0) {
+        const providerNames = newListings.map((r) => r.provider).join(", ");
+        console.log(`🚨 ${device.name} newly blacklisted on: ${providerNames}`);
+
+        // Telegram notification
+        if (telegramEnabled) {
+          const categories = [...new Set(newListings.map((r) => r.category).filter(Boolean))].join(", ") || "unknown";
+          const msg = [
+            `🚨 *BLACKLIST ALERT*`,
+            ``,
+            `📍 *${escMd(device.name)}* \\(${escMd(ipToCheck)}\\)`,
+            `🔴 Newly listed on *${escMd(String(newListings.length))}* provider${newListings.length > 1 ? "s" : ""}:`,
+            ...newListings.map((r) => `  • ${escMd(r.provider)} \\(${escMd(String(r.confidence))}% confidence\\)`),
+            ``,
+            `📂 Categories: ${escMd(categories)}`,
+            `⚠️ Action recommended: Review firewall rules and check for compromised subscribers`,
+          ].join("\n");
+
+          const sent = await sendTelegram(botToken!, tgConfig!.chat_id, msg);
+          await supabase.from("notification_log").insert({
+            event_type: "ip_blacklisted",
+            ip_address: ipToCheck,
+            message: `${device.name} newly blacklisted on ${providerNames}`,
+            success: sent,
+            error_message: sent ? null : "Telegram send failed",
+          });
+        }
+
+        // SMS notification
+        if (smsEnabled) {
+          const smsMessage = `🚨 BLACKLIST: ${device.name} (${ipToCheck}) listed on ${newListings.length} new provider(s): ${providerNames}. Check dashboard for details.`;
+          const smsNumbers = Array.isArray(device.notify_number) && device.notify_number.length > 0
+            ? device.notify_number : [smsConfig!.client_number];
+
+          for (const num of smsNumbers) {
+            if (!num) continue;
+            const sent = await sendSmsWebhook(smsConfig!, num, smsMessage);
+            await supabase.from("notification_log").insert({
+              event_type: "sms_ip_blacklisted",
+              ip_address: ipToCheck,
+              message: `SMS to ${num}: ${device.name} blacklisted on ${providerNames}`,
+              success: sent,
+              error_message: sent ? null : "SMS webhook failed",
+            });
+          }
+        }
+      }
+
+      // ── Send notifications for delistings ──
+      if (delistings.length > 0 && (tgConfig?.notify_delisted || smsConfig?.notify_delisted)) {
+        const delistedNames = delistings.join(", ");
+        console.log(`✅ ${device.name} delisted from: ${delistedNames}`);
+
+        if (telegramEnabled && tgConfig?.notify_delisted) {
+          const msg = [
+            `✅ *DELISTING NOTICE*`,
+            ``,
+            `📍 *${escMd(device.name)}* \\(${escMd(ipToCheck)}\\)`,
+            `🟢 Removed from *${escMd(String(delistings.length))}* provider${delistings.length > 1 ? "s" : ""}:`,
+            ...delistings.map((p) => `  • ${escMd(p)}`),
+          ].join("\n");
+
+          const sent = await sendTelegram(botToken!, tgConfig!.chat_id, msg);
+          await supabase.from("notification_log").insert({
+            event_type: "ip_delisted",
+            ip_address: ipToCheck,
+            message: `${device.name} delisted from ${delistedNames}`,
+            success: sent,
+            error_message: sent ? null : "Telegram send failed",
+          });
+        }
+
+        if (smsEnabled && smsConfig?.notify_delisted) {
+          const smsMessage = `✅ DELISTED: ${device.name} (${ipToCheck}) removed from ${delistings.length} provider(s): ${delistedNames}`;
+          const smsNumbers = Array.isArray(device.notify_number) && device.notify_number.length > 0
+            ? device.notify_number : [smsConfig!.client_number];
+
+          for (const num of smsNumbers) {
+            if (!num) continue;
+            const sent = await sendSmsWebhook(smsConfig!, num, smsMessage);
+            await supabase.from("notification_log").insert({
+              event_type: "sms_ip_delisted",
+              ip_address: ipToCheck,
+              message: `SMS to ${num}: ${device.name} delisted from ${delistedNames}`,
+              success: sent,
+              error_message: sent ? null : "SMS webhook failed",
+            });
+          }
+        }
+      }
 
       // ── Calculate reputation ──
       const listedCount = scanResults.filter((r) => r.listed).length;
