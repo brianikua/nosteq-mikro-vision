@@ -1,619 +1,230 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  RefreshCw,
-  Globe,
-  AlertTriangle,
-  Clock,
-  Search,
-  Database,
-  Wifi,
-  Server,
-} from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Shield, Search, AlertTriangle, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
+interface Device {
+  id: string;
+  name: string;
+  ip_address: string;
+}
+
+interface ScanResult {
+  provider: string;
+  listed: boolean;
+  confidence: number;
+  type: string;
+  category: string | null;
+}
+
+interface ReputationSummary {
+  reputation_score: number;
+  active_listings: number;
+  total_listings: number;
+  last_scan_at: string | null;
+}
+
 export const IPReputationTab = () => {
-  const queryClient = useQueryClient();
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [selectedDevice, setSelectedDevice] = useState<string>("");
   const [scanning, setScanning] = useState(false);
-  const [lastScanDetails, setLastScanDetails] = useState<any>(null);
+  const [summary, setSummary] = useState<ReputationSummary | null>(null);
+  const [lastResults, setLastResults] = useState<ScanResult[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch reputation summaries
-  const { data: summaries, isLoading: loadingSummaries } = useQuery({
-    queryKey: ["ip-reputation-summary"],
-    queryFn: async () => {
-      const { data, error } = await supabase
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from("devices").select("id, name, ip_address").order("name");
+      setDevices(data || []);
+      if (data && data.length > 0) {
+        setSelectedDevice(data[0].id);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDevice) return;
+    const loadSummary = async () => {
+      const { data: rep } = await supabase
         .from("ip_reputation_summary")
-        .select("*, devices(name, ip_address)")
-        .order("reputation_score", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-    refetchInterval: 30000,
-  });
+        .select("*")
+        .eq("device_id", selectedDevice)
+        .maybeSingle();
+      setSummary(rep);
 
-  // Fetch recent scans
-  const { data: recentScans } = useQuery({
-    queryKey: ["recent-blacklist-scans"],
-    queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: scans } = await supabase
         .from("blacklist_scans")
-        .select("*, devices(name)")
+        .select("provider, status, confidence_score, raw_response")
+        .eq("device_id", selectedDevice)
         .order("scanned_at", { ascending: false })
         .limit(50);
-      if (error) throw error;
-      return data;
-    },
-    refetchInterval: 30000,
-  });
 
-  // Fetch IP history
-  const { data: ipHistory } = useQuery({
-    queryKey: ["ip-history"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ip_history")
-        .select("*, devices(name)")
-        .order("detected_at", { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return data;
-    },
-  });
+      if (scans) {
+        setLastResults(scans.map((s) => ({
+          provider: s.provider,
+          listed: s.status === "listed",
+          confidence: s.confidence_score ?? 0,
+          type: "check",
+          category: null,
+        })));
+      }
+    };
+    loadSummary();
+  }, [selectedDevice]);
 
-  // Fetch abuse attributions
-  const { data: attributions } = useQuery({
-    queryKey: ["abuse-attributions"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("abuse_attributions")
-        .select("*, devices(name), blacklist_scans(provider, ip_address)")
-        .order("attributed_at", { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Fetch mitigation actions
-  const { data: mitigations } = useQuery({
-    queryKey: ["mitigation-actions"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mitigation_actions")
-        .select("*, devices(name)")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const runScan = async (deviceId?: string) => {
+  const handleScan = async () => {
+    if (!selectedDevice) return;
     setScanning(true);
-    setLastScanDetails(null);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "check-ip-reputation",
-        { body: deviceId ? { device_id: deviceId } : {} }
-      );
+      const { data, error } = await supabase.functions.invoke("check-ip-reputation", {
+        body: { device_id: selectedDevice },
+      });
       if (error) throw error;
-      setLastScanDetails(data.results);
-      const totalChecks = data.results?.reduce((sum: number, r: any) => sum + (r.total_checks || 0), 0) || 0;
-      const totalListings = data.results?.reduce((sum: number, r: any) => sum + (r.listings || 0), 0) || 0;
-      toast.success(
-        `Scan complete: ${data.results?.length || 0} device(s), ${totalChecks} checks, ${totalListings} listings found`
-      );
-      queryClient.invalidateQueries({ queryKey: ["ip-reputation-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["recent-blacklist-scans"] });
-      queryClient.invalidateQueries({ queryKey: ["ip-history"] });
-    } catch (e: any) {
-      toast.error(`Scan failed: ${e.message}`);
+      if (data?.results?.[0]) {
+        const r = data.results[0];
+        toast.success(`Scan complete: Score ${r.reputation_score}/100, ${r.listings} listings found`);
+        
+        const { data: rep } = await supabase
+          .from("ip_reputation_summary")
+          .select("*")
+          .eq("device_id", selectedDevice)
+          .maybeSingle();
+        setSummary(rep);
+
+        if (r.details) {
+          setLastResults(r.details);
+        }
+      }
+    } catch (e) {
+      console.error("Scan failed:", e);
+      toast.error("Scan failed");
     } finally {
       setScanning(false);
     }
   };
 
-  const getScoreBadge = (score: number) => {
-    if (score >= 80)
-      return (
-        <Badge className="bg-success/20 text-success border-success/30">
-          <ShieldCheck className="h-3 w-3 mr-1" /> Clean ({score})
-        </Badge>
-      );
-    if (score >= 50)
-      return (
-        <Badge className="bg-warning/20 text-warning border-warning/30">
-          <AlertTriangle className="h-3 w-3 mr-1" /> Warning ({score})
-        </Badge>
-      );
+  if (loading) {
     return (
-      <Badge className="bg-destructive/20 text-destructive border-destructive/30">
-        <ShieldAlert className="h-3 w-3 mr-1" /> Critical ({score})
-      </Badge>
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
-  };
+  }
 
-  const getStatusBadge = (status: string) => {
-    if (status === "clean")
-      return (
-        <Badge variant="outline" className="text-success border-success/30">
-          Clean
-        </Badge>
-      );
-    if (status === "listed")
-      return (
-        <Badge
-          variant="outline"
-          className="text-destructive border-destructive/30"
-        >
-          Listed
-        </Badge>
-      );
-    return (
-      <Badge variant="outline" className="text-muted-foreground">
-        Error
-      </Badge>
-    );
-  };
-
-  const approveMitigation = async (id: string) => {
-    const { error } = await supabase
-      .from("mitigation_actions")
-      .update({
-        is_approved: true,
-        executed_at: new Date().toISOString(),
-      })
-      .eq("id", id);
-    if (error) {
-      toast.error("Failed to approve action");
-    } else {
-      toast.success("Mitigation approved");
-      queryClient.invalidateQueries({ queryKey: ["mitigation-actions"] });
-    }
-  };
+  const device = devices.find((d) => d.id === selectedDevice);
+  const scoreColor = !summary
+    ? "text-muted-foreground"
+    : summary.reputation_score >= 80
+    ? "text-[hsl(var(--success))]"
+    : summary.reputation_score >= 50
+    ? "text-[hsl(var(--warning))]"
+    : "text-destructive";
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Shield className="h-7 w-7 text-primary" />
-          <div>
-            <h2 className="text-xl font-bold">IP Reputation Intelligence</h2>
-            <p className="text-sm text-muted-foreground">
-              Public IP blacklist monitoring & abuse attribution
-            </p>
-          </div>
-        </div>
-        <Button onClick={() => runScan()} disabled={scanning} size="sm">
-          <RefreshCw
-            className={`h-4 w-4 mr-2 ${scanning ? "animate-spin" : ""}`}
-          />
-          {scanning ? "Scanning..." : "Scan All Devices"}
+      <div className="flex items-center gap-4">
+        <Select value={selectedDevice} onValueChange={setSelectedDevice}>
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Select IP" />
+          </SelectTrigger>
+          <SelectContent>
+            {devices.map((d) => (
+              <SelectItem key={d.id} value={d.id}>
+                {d.name} ({d.ip_address})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button onClick={handleScan} disabled={scanning || !selectedDevice}>
+          {scanning ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Scanning 34+ providers...</>
+          ) : (
+            <><Search className="h-4 w-4 mr-2" /> Run Blacklist Scan</>
+          )}
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card className="bg-card border-border/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Globe className="h-8 w-8 text-primary" />
-              <div>
-                <p className="text-2xl font-bold font-mono">
-                  {summaries?.length || 0}
-                </p>
-                <p className="text-xs text-muted-foreground">Monitored IPs</p>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardDescription>IP Address</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="font-mono text-lg font-bold">{device?.ip_address ?? "—"}</p>
           </CardContent>
         </Card>
-        <Card className="bg-card border-border/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="h-8 w-8 text-success" />
-              <div>
-                <p className="text-2xl font-bold font-mono">
-                  {summaries?.filter((s: any) => s.reputation_score >= 80)
-                    .length || 0}
-                </p>
-                <p className="text-xs text-muted-foreground">Clean IPs</p>
-              </div>
-            </div>
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardDescription>Reputation Score</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className={`text-3xl font-bold font-mono ${scoreColor}`}>
+              {summary ? `${summary.reputation_score}` : "—"}
+              <span className="text-sm text-muted-foreground font-normal">/100</span>
+            </p>
           </CardContent>
         </Card>
-        <Card className="bg-card border-border/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <ShieldAlert className="h-8 w-8 text-destructive" />
-              <div>
-                <p className="text-2xl font-bold font-mono">
-                  {summaries?.filter((s: any) => s.active_listings > 0)
-                    .length || 0}
-                </p>
-                <p className="text-xs text-muted-foreground">Blacklisted</p>
-              </div>
-            </div>
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardDescription>Active Listings</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className={`text-3xl font-bold font-mono ${summary && summary.active_listings > 0 ? "text-destructive" : "text-[hsl(var(--success))]"}`}>
+              {summary ? summary.active_listings : "—"}
+            </p>
           </CardContent>
         </Card>
-        <Card className="bg-card border-border/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Database className="h-8 w-8 text-primary" />
-              <div>
-                <p className="text-2xl font-bold font-mono">34+</p>
-                <p className="text-xs text-muted-foreground">Providers Checked</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Clock className="h-8 w-8 text-muted-foreground" />
-              <div>
-                <p className="text-2xl font-bold font-mono">
-                  {summaries?.[0]?.last_scan_at
-                    ? new Date(summaries[0].last_scan_at).toLocaleTimeString()
-                    : "Never"}
-                </p>
-                <p className="text-xs text-muted-foreground">Last Scan</p>
-              </div>
-            </div>
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardDescription>Last Scan</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm font-mono">
+              {summary?.last_scan_at ? new Date(summary.last_scan_at).toLocaleString() : "Never"}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Provider Coverage */}
-      <Card className="bg-card border-border/50">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Server className="h-5 w-5" /> Provider Coverage
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Wifi className="h-4 w-4 text-primary" />
-                <span>DNSBL Providers (29)</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {["Spamhaus ZEN", "Spamhaus SBL", "Spamhaus XBL", "Spamhaus PBL", "Barracuda", "SpamCop", "SORBS Combined", "SORBS Spam", "SORBS New Spam", "SORBS Recent", "UCEProtect L1-L3", "CBL", "PSBL", "DroneBL", "WPBL", "Mailspike", "NiX Spam", "TruncateGBUDB", "abuse.ch", "InterServer", "0spam", "s5h.net", "INPS", "Blocklist.de", "DNSRBL", "HostKarma", "UBL"].map(p => (
-                  <Badge key={p} variant="outline" className="text-[10px] px-1.5 py-0">
-                    {p}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Server className="h-4 w-4 text-primary" />
-                <span>API Providers (up to 3)</span>
-              </div>
-              <div className="space-y-1 text-sm text-muted-foreground">
-                <p>• <strong>AbuseIPDB</strong> – Abuse reports & confidence scoring</p>
-                <p>• <strong>VirusTotal</strong> – 70+ antivirus engine analysis</p>
-                <p>• <strong>IPQualityScore</strong> – Fraud, proxy, VPN & bot detection</p>
-              </div>
-              <p className="text-xs text-muted-foreground italic">API keys required for these providers</p>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Globe className="h-4 w-4 text-primary" />
-                <span>Web Checks (2)</span>
-              </div>
-              <div className="space-y-1 text-sm text-muted-foreground">
-                <p>• <strong>IP-API</strong> – Proxy/VPN/hosting detection</p>
-                <p>• <strong>Blocklist.de</strong> – Attack report database</p>
-              </div>
-              <p className="text-xs text-muted-foreground italic">Free, no API key needed</p>
-            </div>
-          </div>
-          {lastScanDetails && lastScanDetails.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-border/50">
-              <p className="text-sm font-medium mb-2">Last Scan Breakdown:</p>
-              <div className="flex flex-wrap gap-3">
-                {lastScanDetails.map((r: any) => (
-                  <div key={r.device} className="text-xs bg-muted/50 rounded px-3 py-2">
-                    <p className="font-medium">{r.device} ({r.ip})</p>
-                    <p className="text-muted-foreground">
-                      DNSBL: {r.by_type?.dnsbl?.listed || 0}/{r.by_type?.dnsbl?.checked || 0} •
-                      API: {r.by_type?.api?.listed || 0}/{r.by_type?.api?.checked || 0} •
-                      Web: {r.by_type?.web?.listed || 0}/{r.by_type?.web?.checked || 0}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Reputation Table */}
-      <Card className="bg-card border-border/50">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Search className="h-5 w-5" /> Device Reputation Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loadingSummaries ? (
-            <p className="text-muted-foreground text-sm">Loading...</p>
-          ) : summaries && summaries.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Device</TableHead>
-                  <TableHead>Public IP</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Listings</TableHead>
-                  <TableHead>Last Scan</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {summaries.map((s: any) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">
-                      {(s.devices as any)?.name || "Unknown"}
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {s.ip_address}
-                    </TableCell>
-                    <TableCell>{getScoreBadge(s.reputation_score)}</TableCell>
-                    <TableCell>
-                      <span className="font-mono">
-                        {s.active_listings}/{s.total_listings}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {s.last_scan_at
-                        ? new Date(s.last_scan_at).toLocaleString()
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => runScan(s.device_id)}
-                        disabled={scanning}
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" /> Rescan
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Shield className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p>No reputation data yet. Run your first scan.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent Scans */}
-      <Card className="bg-card border-border/50">
-        <CardHeader>
-          <CardTitle className="text-lg">Recent Blacklist Scans</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recentScans && recentScans.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Device</TableHead>
-                  <TableHead>IP</TableHead>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Confidence</TableHead>
-                  <TableHead>Time</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentScans.map((scan: any) => (
-                  <TableRow key={scan.id}>
-                    <TableCell>{(scan.devices as any)?.name}</TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {scan.ip_address}
-                    </TableCell>
-                    <TableCell>{scan.provider}</TableCell>
-                    <TableCell>{getStatusBadge(scan.status)}</TableCell>
-                    <TableCell>
-                      {scan.abuse_category ? (
-                        <Badge variant="secondary">
-                          {scan.abuse_category}
-                        </Badge>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      {scan.confidence_score}%
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(scan.scanned_at).toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-muted-foreground text-sm text-center py-4">
-              No scans yet
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Abuse Attributions */}
-      {attributions && attributions.length > 0 && (
-        <Card className="bg-card border-border/50">
+      {lastResults.length > 0 && (
+        <Card className="border-border/50">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-warning" /> Abuse
-              Attributions
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className="h-5 w-5" /> Scan Results
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Device</TableHead>
-                  <TableHead>PPPoE User</TableHead>
-                  <TableHead>Private IP</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Severity</TableHead>
-                  <TableHead>Time</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {attributions.map((a: any) => (
-                  <TableRow key={a.id}>
-                    <TableCell>{(a.devices as any)?.name}</TableCell>
-                    <TableCell className="font-mono">
-                      {a.pppoe_username || "Unknown"}
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      {a.private_ip || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{a.abuse_category}</Badge>
-                    </TableCell>
-                    <TableCell>{getScoreBadge(100 - a.severity_score)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(a.attributed_at).toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {lastResults.map((r, i) => (
+                <div
+                  key={i}
+                  className={`flex items-center justify-between px-3 py-2 rounded-md text-sm ${
+                    r.listed ? "bg-destructive/10 border border-destructive/20" : "bg-card border border-border/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {r.listed ? (
+                      <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                    ) : (
+                      <CheckCircle className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
+                    )}
+                    <span className="truncate">{r.provider}</span>
+                  </div>
+                  <Badge variant={r.listed ? "destructive" : "secondary"} className="text-xs">
+                    {r.listed ? "Listed" : "Clean"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Mitigation Actions */}
-      {mitigations && mitigations.length > 0 && (
-        <Card className="bg-card border-border/50">
-          <CardHeader>
-            <CardTitle className="text-lg">Mitigation Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Device</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Approve</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mitigations.map((m: any) => (
-                  <TableRow key={m.id}>
-                    <TableCell>{(m.devices as any)?.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{m.action_type}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm max-w-xs truncate">
-                      {m.description}
-                    </TableCell>
-                    <TableCell>
-                      {m.is_approved ? (
-                        <Badge className="bg-success/20 text-success">
-                          Approved
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Pending</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {!m.is_approved && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => approveMitigation(m.id)}
-                        >
-                          Approve
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* IP Change History */}
-      <Card className="bg-card border-border/50">
-        <CardHeader>
-          <CardTitle className="text-lg">IP Change History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {ipHistory && ipHistory.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Device</TableHead>
-                  <TableHead>IP Address</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Current</TableHead>
-                  <TableHead>Detected</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ipHistory.map((h: any) => (
-                  <TableRow key={h.id}>
-                    <TableCell>{(h.devices as any)?.name}</TableCell>
-                    <TableCell className="font-mono">{h.ip_address}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{h.source}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {h.is_current ? (
-                        <Badge className="bg-success/20 text-success">
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Previous</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(h.detected_at).toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-muted-foreground text-sm text-center py-4">
-              No IP history recorded
-            </p>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 };
