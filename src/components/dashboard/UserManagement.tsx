@@ -44,6 +44,51 @@ interface User {
 }
 
 export function UserManagement() {
+  return <UserManagementInner />;
+}
+
+function ChangeMyPassword() {
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = async () => {
+    if (newPw.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (newPw !== confirmPw) { toast.error("Passwords do not match"); return; }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) throw error;
+      toast.success("Password updated successfully");
+      setNewPw("");
+      setConfirmPw("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md space-y-4">
+      <p className="text-sm text-muted-foreground">Change the password for your currently logged-in account.</p>
+      <div className="space-y-2">
+        <Label htmlFor="my-new-pw">New Password</Label>
+        <Input id="my-new-pw" type="password" placeholder="Min 6 characters" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="my-confirm-pw">Confirm Password</Label>
+        <Input id="my-confirm-pw" type="password" placeholder="Re-enter password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
+      </div>
+      <Button onClick={handleChange} disabled={loading}>
+        {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <KeyRound className="h-4 w-4 mr-2" />}
+        Update My Password
+      </Button>
+    </div>
+  );
+}
+
+function UserManagementInner() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
