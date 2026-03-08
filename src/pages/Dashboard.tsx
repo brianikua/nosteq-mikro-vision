@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Globe, Shield, Bell } from "lucide-react";
+import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Users } from "lucide-react";
 import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
@@ -17,7 +17,8 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
-  
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
+
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -26,6 +27,13 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .eq("role", "superadmin")
+          .maybeSingle();
+        setIsSuperadmin(!!data);
       }
     };
     checkAuth();
@@ -74,6 +82,12 @@ const Dashboard = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add IP
               </Button>
+              {isSuperadmin && (
+                <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
+                  <Users className="h-4 w-4 mr-2" />
+                  Users
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
