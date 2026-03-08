@@ -5,6 +5,120 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/**
+ * Poll check-host.net for results with retries.
+ */
+async function pollCheckHost(requestId: string, maxAttempts = 3): Promise<Record<string, any>> {
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, i === 0 ? 3000 : 2000));
+    try {
+      const res = await fetch(`https://check-host.net/check-result/${requestId}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const hasResults = Object.values(data).some((v: any) => v !== null);
+      if (hasResults) return data;
+    } catch {}
+  }
+  return {};
+}
+
+/**
+ * Probe host using check-host.net ICMP ping + TCP checks.
+ * Tries ping first, falls back to TCP port check.
+ */
+async function probeHost(ip: string): Promise<{ reachable: boolean; latency_ms: number; method: string }> {
+  // Launch both ICMP and TCP checks in parallel
+  const [pingReq, tcpReq] = await Promise.all([
+    fetch(`https://check-host.net/check-ping?host=${ip}&max_nodes=3`, {
+      headers: { Accept: "application/json" },
+    }).catch(() => null),
+    fetch(`https://check-host.net/check-tcp?host=${ip}:80&max_nodes=3`, {
+      headers: { Accept: "application/json" },
+    }).catch(() => null),
+  ]);
+
+  const pingId = pingReq?.ok ? (await pingReq.json()).request_id : null;
+  const tcpId = tcpReq?.ok ? (await tcpReq.json()).request_id : null;
+
+  console.log(`Check IDs - ping: ${pingId}, tcp: ${tcpId}`);
+
+  // Poll both in parallel
+  const [pingData, tcpData] = await Promise.all([
+    pingId ? pollCheckHost(pingId) : Promise.resolve({}),
+    tcpId ? pollCheckHost(tcpId) : Promise.resolve({}),
+  ]);
+
+  console.log("Ping results:", JSON.stringify(pingData));
+  console.log("TCP results:", JSON.stringify(tcpData));
+
+  // Parse ICMP ping results
+  let pingSuccess = 0;
+  let pingTotal = 0;
+  let totalLatency = 0;
+
+  for (const [, nodeResult] of Object.entries(pingData)) {
+    if (!Array.isArray(nodeResult) || nodeResult.length === 0) continue;
+    const pings = Array.isArray(nodeResult[0]) ? nodeResult[0] : nodeResult;
+    for (const ping of pings as any[]) {
+      pingTotal++;
+      if (Array.isArray(ping) && ping[0] === "OK") {
+        pingSuccess++;
+        totalLatency += ping[1] * 1000;
+      }
+    }
+  }
+
+  if (pingSuccess > 0) {
+    return {
+      reachable: true,
+      latency_ms: Math.round(totalLatency / pingSuccess),
+      method: "icmp",
+    };
+  }
+
+  // Parse TCP results: each node returns {"address":"ip","time":0.123} or {"error":"..."}
+  for (const [, nodeResult] of Object.entries(tcpData)) {
+    if (!Array.isArray(nodeResult) || nodeResult.length === 0) continue;
+    const result = nodeResult[0];
+    if (result && typeof result === "object" && result.time !== undefined && !result.error) {
+      return {
+        reachable: true,
+        latency_ms: Math.round(result.time * 1000),
+        method: "tcp",
+      };
+    }
+  }
+
+  // Also try TCP on port 443 and 8291 (common MikroTik/Winbox port)
+  try {
+    const extraTcp = await fetch(`https://check-host.net/check-tcp?host=${ip}:443&max_nodes=2`, {
+      headers: { Accept: "application/json" },
+    });
+    if (extraTcp.ok) {
+      const extraData = await extraTcp.json();
+      if (extraData.request_id) {
+        const extraResults = await pollCheckHost(extraData.request_id, 2);
+        console.log("TCP 443 results:", JSON.stringify(extraResults));
+        for (const [, nodeResult] of Object.entries(extraResults)) {
+          if (!Array.isArray(nodeResult) || nodeResult.length === 0) continue;
+          const result = nodeResult[0];
+          if (result && typeof result === "object" && result.time !== undefined && !result.error) {
+            return {
+              reachable: true,
+              latency_ms: Math.round(result.time * 1000),
+              method: "tcp-443",
+            };
+          }
+        }
+      }
+    }
+  } catch {}
+
+  return { reachable: false, latency_ms: 0, method: "none" };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -58,33 +172,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    const start = performance.now();
-    let reachable = false;
-    let latency_ms = 0;
-
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
-      const response = await fetch(`http://${ip_address}/`, {
-        signal: controller.signal,
-        method: "GET",
-        redirect: "manual",
-      });
-      latency_ms = Math.round(performance.now() - start);
-      reachable = true;
-      clearTimeout(timeout);
-    } catch (e) {
-      latency_ms = Math.round(performance.now() - start);
-      const msg = e?.message || String(e);
-      if (msg.includes("onnection refused")) {
-        reachable = true;
-      }
-    }
-
-    const result = { reachable, latency_ms, ip_address };
+    console.log(`Probing ${ip_address} via ICMP + TCP checks...`);
+    const { reachable, latency_ms, method } = await probeHost(ip_address);
+    console.log(`Result for ${ip_address}: reachable=${reachable}, latency=${latency_ms}ms, method=${method}`);
 
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({ reachable, latency_ms, ip_address, method }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
