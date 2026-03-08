@@ -269,13 +269,17 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Send SMS alert on status change (per-device number or global fallback)
+      // Send SMS alert on status change (per-device numbers or global fallback)
       if (statusChanged && smsEnabled) {
         const isDown = !reachable;
         const shouldNotify = isDown ? smsConfig.notify_down : smsConfig.notify_up;
-        const smsNumber = device.notify_number || smsConfig.client_number;
 
-        if (shouldNotify && smsNumber) {
+        if (shouldNotify) {
+          // Collect all numbers: per-device array + global fallback
+          const deviceNumbers: string[] = Array.isArray(device.notify_number) && device.notify_number.length > 0
+            ? device.notify_number
+            : [smsConfig.client_number];
+
           const emoji = isDown ? "🔴" : "🟢";
           const status = isDown ? "DOWN" : "UP";
           const template = smsConfig.message_template || "{{status_emoji}} {{device_name}} ({{ip_address}}) is {{status}}. Latency: {{latency}}ms";
@@ -289,15 +293,18 @@ Deno.serve(async (req) => {
             isp_number: smsConfig.isp_contact_number || "N/A",
           });
 
-          const sent = await sendSmsWebhook(smsConfig, smsNumber, smsMessage);
+          for (const smsNumber of deviceNumbers) {
+            if (!smsNumber) continue;
+            const sent = await sendSmsWebhook(smsConfig, smsNumber, smsMessage);
 
-          await supabase.from("notification_log").insert({
-            event_type: isDown ? "sms_ip_down" : "sms_ip_up",
-            ip_address: device.ip_address,
-            message: `SMS: ${device.name} is ${status}`,
-            success: sent,
-            error_message: sent ? null : "SMS webhook failed",
-          });
+            await supabase.from("notification_log").insert({
+              event_type: isDown ? "sms_ip_down" : "sms_ip_up",
+              ip_address: device.ip_address,
+              message: `SMS to ${smsNumber}: ${device.name} is ${status}`,
+              success: sent,
+              error_message: sent ? null : "SMS webhook failed",
+            });
+          }
         }
       }
 
