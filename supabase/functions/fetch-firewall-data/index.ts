@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
 
         try {
           const [allConns, tcpResults, udpResults, icmpResults] = await new RouterOSAPI(
-            device.ip_address, device.port, device.username, device.password
+            device.ip_address, device.port, device.username, decryptedPassword
           ).execute([
             ["/ip/firewall/connection/print", "=count-only="],
             ["/ip/firewall/connection/print", "=count-only=", "?protocol=tcp"],
