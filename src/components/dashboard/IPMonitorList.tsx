@@ -64,7 +64,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
     setPinging((p) => ({ ...p, [ip.id]: true }));
     try {
       const { data, error } = await supabase.functions.invoke("ping-device", {
-        body: { ip_address: ip.ip_address },
+        body: { ip_address: ip.ip_address, check_ports: ip.check_ports || [80, 443] },
       });
       if (error) throw error;
       const isUp = data?.reachable ?? false;
