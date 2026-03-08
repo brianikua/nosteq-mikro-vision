@@ -285,10 +285,10 @@ Deno.serve(async (req) => {
 
     let devices: any[] = [];
     if (deviceId) {
-      const { data } = await supabase.from("devices").select("id, name, ip_address").eq("id", deviceId);
+      const { data } = await supabase.from("devices").select("id, name, ip_address, notify_number").eq("id", deviceId);
       devices = data || [];
     } else {
-      const { data } = await supabase.from("devices").select("id, name, ip_address");
+      const { data } = await supabase.from("devices").select("id, name, ip_address, notify_number");
       devices = data || [];
     }
 
