@@ -6,12 +6,15 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("Handler called, method:", req.method);
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { ip_address } = await req.json();
+    console.log("Pinging IP:", ip_address);
 
     if (!ip_address) {
       return new Response(
@@ -21,36 +24,39 @@ serve(async (req) => {
     }
 
     const start = performance.now();
-
-    // Try TCP connect to RouterOS API port as a ping proxy
     let reachable = false;
     let latency_ms = 0;
 
     try {
-      const conn = await Deno.connect({ hostname: ip_address, port: 8728 });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const response = await fetch(`http://${ip_address}/`, {
+        signal: controller.signal,
+        method: "GET",
+        redirect: "manual",
+      });
       latency_ms = Math.round(performance.now() - start);
       reachable = true;
-      conn.close();
-    } catch {
-      // Try HTTP port 80 as fallback
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        await fetch(`http://${ip_address}/`, { signal: controller.signal, method: "HEAD" });
-        latency_ms = Math.round(performance.now() - start);
+      clearTimeout(timeout);
+      console.log(`HTTP response status: ${response.status}`);
+    } catch (e) {
+      latency_ms = Math.round(performance.now() - start);
+      const msg = e?.message || String(e);
+      console.log(`Fetch error: ${msg}`);
+      if (msg.includes("onnection refused")) {
         reachable = true;
-        clearTimeout(timeout);
-      } catch {
-        latency_ms = Math.round(performance.now() - start);
-        reachable = false;
       }
     }
 
+    const result = { reachable, latency_ms, ip_address };
+    console.log("Result:", JSON.stringify(result));
+
     return new Response(
-      JSON.stringify({ reachable, latency_ms, ip_address }),
+      JSON.stringify(result),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    console.error("Ping error:", error.message);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
