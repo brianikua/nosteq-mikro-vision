@@ -122,6 +122,41 @@ async function sendTelegram(botToken: string, chatId: string, message: string): 
   }
 }
 
+/**
+ * Send SMS via configured webhook
+ */
+async function sendSmsWebhook(config: any, phone: string, message: string): Promise<boolean> {
+  try {
+    let res: Response;
+    if (config.webhook_method === "GET") {
+      const url = new URL(config.webhook_url);
+      url.searchParams.set("phone_number", phone);
+      url.searchParams.set("message", message);
+      res = await fetch(url.toString());
+    } else {
+      res = await fetch(config.webhook_url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone_number: phone, message }),
+      });
+    }
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Apply SMS message template
+ */
+function applyTemplate(template: string, vars: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+  }
+  return result;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -154,9 +189,17 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    const telegramEnabled = tgConfig?.enabled && tgConfig?.chat_id && botToken;
+    // Fetch SMS config
+    const { data: smsConfig } = await supabase
+      .from("sms_config")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
 
-    console.log(`Cron: Checking ${devices.length} devices, Telegram: ${telegramEnabled ? "enabled" : "disabled"}`);
+    const telegramEnabled = tgConfig?.enabled && tgConfig?.chat_id && botToken;
+    const smsEnabled = smsConfig?.enabled && smsConfig?.webhook_url && smsConfig?.client_number;
+
+    console.log(`Cron: Checking ${devices.length} devices, Telegram: ${telegramEnabled ? "enabled" : "disabled"}, SMS: ${smsEnabled ? "enabled" : "disabled"}`);
 
     const results: any[] = [];
 
