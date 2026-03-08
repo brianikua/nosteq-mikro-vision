@@ -8,6 +8,7 @@ import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
 import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab";
+import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
 import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
 import { toast } from "sonner";
 
