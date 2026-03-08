@@ -175,6 +175,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Block private, loopback, link-local, and metadata IPs (SSRF protection)
+    const isPrivateIP = /^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|169\.254\.|0\.|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.|198\.1[89]\.|224\.|24[0-9]\.|25[0-5]\.)/.test(ip_address);
+    if (isPrivateIP) {
+      return new Response(
+        JSON.stringify({ error: "Private or reserved IP addresses are not allowed" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Validate and sanitize ports
     const ports: number[] = Array.isArray(check_ports)
       ? check_ports.filter((p: any) => typeof p === "number" && p >= 1 && p <= 65535).slice(0, 10)
