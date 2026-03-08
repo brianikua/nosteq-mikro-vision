@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, Wifi, Trash2, Shield, Clock, ChevronDown, Globe } from "lucide-react";
+import { Loader2, Wifi, Trash2, Shield, Clock, ChevronDown, Globe, Pencil } from "lucide-react";
+import { EditIPDialog } from "./EditIPDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
