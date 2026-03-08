@@ -6,12 +6,15 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("Handler called, method:", req.method);
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { ip_address } = await req.json();
+    console.log("Pinging IP:", ip_address);
 
     if (!ip_address) {
       return new Response(
@@ -24,7 +27,6 @@ serve(async (req) => {
     let reachable = false;
     let latency_ms = 0;
 
-    // Use a single HTTP request with a 3 second timeout
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
@@ -36,19 +38,21 @@ serve(async (req) => {
       latency_ms = Math.round(performance.now() - start);
       reachable = true;
       clearTimeout(timeout);
-      console.log(`Ping ${ip_address}: HTTP status=${response.status}, latency=${latency_ms}ms`);
+      console.log(`HTTP response status: ${response.status}`);
     } catch (e) {
       latency_ms = Math.round(performance.now() - start);
       const msg = e?.message || String(e);
-      console.log(`Ping ${ip_address}: error="${msg}", latency=${latency_ms}ms`);
-      // "Connection refused" means host is up but port closed - still reachable
+      console.log(`Fetch error: ${msg}`);
       if (msg.includes("onnection refused")) {
         reachable = true;
       }
     }
 
+    const result = { reachable, latency_ms, ip_address };
+    console.log("Result:", JSON.stringify(result));
+
     return new Response(
-      JSON.stringify({ reachable, latency_ms, ip_address }),
+      JSON.stringify(result),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
