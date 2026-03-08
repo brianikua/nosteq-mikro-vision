@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Activity, Users, Shield, Flame } from "lucide-react";
+import { RefreshCw, Plus, LogOut, Activity, Users, Shield, Flame, Wifi, Server } from "lucide-react";
 import { DeviceGrid } from "@/components/dashboard/DeviceGrid";
 import { AddDeviceDialog } from "@/components/dashboard/AddDeviceDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
 import { FirewallNATTab } from "@/components/dashboard/FirewallNATTab";
+import { PPPoESessionsTab } from "@/components/dashboard/PPPoESessionsTab";
+import { DHCPARPTab } from "@/components/dashboard/DHCPARPTab";
 import { toast } from "sonner";
 
 const Dashboard = () => {
