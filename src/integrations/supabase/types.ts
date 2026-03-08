@@ -200,6 +200,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_config: {
+        Row: {
+          client_number: string
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          isp_contact_name: string | null
+          isp_contact_number: string | null
+          message_template: string | null
+          notify_blacklisted: boolean | null
+          notify_delisted: boolean | null
+          notify_down: boolean | null
+          notify_summary: boolean | null
+          notify_up: boolean | null
+          updated_at: string | null
+          webhook_method: string
+          webhook_url: string
+        }
+        Insert: {
+          client_number: string
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          isp_contact_name?: string | null
+          isp_contact_number?: string | null
+          message_template?: string | null
+          notify_blacklisted?: boolean | null
+          notify_delisted?: boolean | null
+          notify_down?: boolean | null
+          notify_summary?: boolean | null
+          notify_up?: boolean | null
+          updated_at?: string | null
+          webhook_method?: string
+          webhook_url: string
+        }
+        Update: {
+          client_number?: string
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          isp_contact_name?: string | null
+          isp_contact_number?: string | null
+          message_template?: string | null
+          notify_blacklisted?: boolean | null
+          notify_delisted?: boolean | null
+          notify_down?: boolean | null
+          notify_summary?: boolean | null
+          notify_up?: boolean | null
+          updated_at?: string | null
+          webhook_method?: string
+          webhook_url?: string
+        }
+        Relationships: []
+      }
       telegram_config: {
         Row: {
           chat_id: string
