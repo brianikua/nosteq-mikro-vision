@@ -272,8 +272,8 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <DetailItem label="Check Interval" value={ip.check_interval_minutes ? `${ip.check_interval_minutes} min` : "5 min"} />
+                  <DetailItem label="SMS Notify" value={ip.notify_number || "Not set"} valueClass={ip.notify_number ? undefined : "text-muted-foreground"} />
                   <DetailItem label="Last Check" value={ip.last_ping_at ? new Date(ip.last_ping_at).toLocaleString() : "Never"} />
-                  <DetailItem label="Last Scan" value={ip.reputation?.last_scan_at ? new Date(ip.reputation.last_scan_at).toLocaleString() : "Never"} />
                   <DetailItem label="Added" value={new Date(ip.created_at).toLocaleDateString()} />
                 </div>
 
