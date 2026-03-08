@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Activity, Users, Shield, Flame } from "lucide-react";
+import { RefreshCw, Plus, LogOut, Activity, Users, Shield, Flame, Wifi, Server } from "lucide-react";
 import { DeviceGrid } from "@/components/dashboard/DeviceGrid";
 import { AddDeviceDialog } from "@/components/dashboard/AddDeviceDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
 import { FirewallNATTab } from "@/components/dashboard/FirewallNATTab";
+import { PPPoESessionsTab } from "@/components/dashboard/PPPoESessionsTab";
+import { DHCPARPTab } from "@/components/dashboard/DHCPARPTab";
 import { toast } from "sonner";
 
 const Dashboard = () => {
@@ -100,6 +102,12 @@ const Dashboard = () => {
             <TabsTrigger value="devices" className="flex items-center gap-2">
               <Activity className="h-4 w-4" /> Devices
             </TabsTrigger>
+            <TabsTrigger value="pppoe" className="flex items-center gap-2">
+              <Wifi className="h-4 w-4" /> PPPoE Sessions
+            </TabsTrigger>
+            <TabsTrigger value="dhcp-arp" className="flex items-center gap-2">
+              <Server className="h-4 w-4" /> DHCP & ARP
+            </TabsTrigger>
             <TabsTrigger value="firewall" className="flex items-center gap-2">
               <Flame className="h-4 w-4" /> Firewall & NAT
             </TabsTrigger>
@@ -110,6 +118,14 @@ const Dashboard = () => {
 
           <TabsContent value="devices">
             <DeviceGrid refreshTrigger={refreshing} />
+          </TabsContent>
+
+          <TabsContent value="pppoe">
+            <PPPoESessionsTab />
+          </TabsContent>
+
+          <TabsContent value="dhcp-arp">
+            <DHCPARPTab />
           </TabsContent>
 
           <TabsContent value="firewall">
