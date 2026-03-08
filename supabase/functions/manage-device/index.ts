@@ -38,16 +38,8 @@ Deno.serve(async (req) => {
     }
 
     const userId = claimsData.claims.sub;
-
-    // Check admin/superadmin role
-    const { data: roles } = await authClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-
-    const isAuthorized = roles?.some(
-      (r: any) => r.role === "admin" || r.role === "superadmin"
-    );
+    const { data: roles } = await authClient.from("user_roles").select("role").eq("user_id", userId);
+    const isAuthorized = roles?.some((r: any) => r.role === "admin" || r.role === "superadmin");
     if (!isAuthorized) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
@@ -62,14 +54,14 @@ Deno.serve(async (req) => {
     if (action === "create") {
       const { name, ip_address, username, password, port, model, routeros_version } = body;
 
-      // Insert device with placeholder password first
+      // Insert device with placeholder password
       const { data: device, error: insertError } = await supabase
         .from("devices")
         .insert({
           name,
           ip_address,
           username,
-          password: "***pending_encryption***",
+          password: "***pending***",
           port: port || 8728,
           model: model || null,
           routeros_version: routeros_version || null,
@@ -79,13 +71,12 @@ Deno.serve(async (req) => {
 
       if (insertError) throw insertError;
 
-      // Store password in vault
-      const { error: vaultError } = await supabase.rpc("store_device_password", {
+      // Encrypt password via DB function
+      const { error: encError } = await supabase.rpc("encrypt_device_password", {
         p_device_id: device.id,
         p_password: password,
       });
-
-      if (vaultError) throw vaultError;
+      if (encError) throw encError;
 
       return new Response(
         JSON.stringify({ success: true, device_id: device.id }),
@@ -96,7 +87,6 @@ Deno.serve(async (req) => {
     if (action === "update") {
       const { device_id, name, ip_address, username, password, port } = body;
 
-      // Update non-password fields
       const updateData: Record<string, unknown> = {};
       if (name !== undefined) updateData.name = name;
       if (ip_address !== undefined) updateData.ip_address = ip_address;
@@ -111,13 +101,12 @@ Deno.serve(async (req) => {
         if (updateError) throw updateError;
       }
 
-      // Update password in vault if provided
       if (password) {
-        const { error: vaultError } = await supabase.rpc("store_device_password", {
+        const { error: encError } = await supabase.rpc("encrypt_device_password", {
           p_device_id: device_id,
           p_password: password,
         });
-        if (vaultError) throw vaultError;
+        if (encError) throw encError;
       }
 
       return new Response(
@@ -127,7 +116,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: "Invalid action" }),
+      JSON.stringify({ error: "Invalid action. Use 'create' or 'update'." }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
