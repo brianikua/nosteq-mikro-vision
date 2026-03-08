@@ -21,12 +21,16 @@ import {
   AlertTriangle,
   Clock,
   Search,
+  Database,
+  Wifi,
+  Server,
 } from "lucide-react";
 import { toast } from "sonner";
 
 export const IPReputationTab = () => {
   const queryClient = useQueryClient();
   const [scanning, setScanning] = useState(false);
+  const [lastScanDetails, setLastScanDetails] = useState<any>(null);
 
   // Fetch reputation summaries
   const { data: summaries, isLoading: loadingSummaries } = useQuery({
