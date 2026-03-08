@@ -342,7 +342,8 @@ export const IPReputationTab = () => {
               </div>
             </div>
           )}
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Reputation Table */}
       <Card className="bg-card border-border/50">
