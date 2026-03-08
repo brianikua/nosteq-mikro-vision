@@ -224,8 +224,15 @@ Deno.serve(async (req) => {
     const abuseIPDBKey = Deno.env.get("ABUSEIPDB_API_KEY");
     const virusTotalKey = Deno.env.get("VIRUSTOTAL_API_KEY");
     const ipqsKey = Deno.env.get("IPQUALITYSCORE_API_KEY");
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Fetch notification configs
+    const { data: tgConfig } = await supabase.from("telegram_config").select("*").limit(1).maybeSingle();
+    const { data: smsConfig } = await supabase.from("sms_config").select("*").limit(1).maybeSingle();
+    const telegramEnabled = tgConfig?.enabled && tgConfig?.chat_id && botToken && tgConfig?.notify_blacklisted;
+    const smsEnabled = smsConfig?.enabled && smsConfig?.webhook_url && smsConfig?.client_number && smsConfig?.notify_blacklisted;
 
     const body = await req.json().catch(() => ({}));
     const deviceId = body.device_id;
