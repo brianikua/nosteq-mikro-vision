@@ -3,21 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Activity, Users, Shield, Flame, Wifi, Server } from "lucide-react";
-import { DeviceGrid } from "@/components/dashboard/DeviceGrid";
-import { AddDeviceDialog } from "@/components/dashboard/AddDeviceDialog";
+import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Users, LayoutGrid, List } from "lucide-react";
+import { IPMonitorGrid } from "@/components/dashboard/IPMonitorGrid";
+import { IPMonitorTable } from "@/components/dashboard/IPMonitorTable";
+import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
-import { FirewallNATTab } from "@/components/dashboard/FirewallNATTab";
-import { PPPoESessionsTab } from "@/components/dashboard/PPPoESessionsTab";
-import { DHCPARPTab } from "@/components/dashboard/DHCPARPTab";
+import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab";
+import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
 import { toast } from "sonner";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [showAddDevice, setShowAddDevice] = useState(false);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(false);
+  const [showAddIP, setShowAddIP] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -41,18 +41,9 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  useEffect(() => {
-    if (!autoRefreshEnabled) return;
-    const interval = setInterval(() => {
-      handleRefresh();
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [autoRefreshEnabled]);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    toast.info("Refreshing device status...");
-    setTimeout(() => setRefreshing(false), 1000);
+  const handleRefresh = () => {
+    setRefreshTrigger((prev) => !prev);
+    toast.info("Refreshing...");
   };
 
   const handleSignOut = async () => {
@@ -68,20 +59,20 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Activity className="h-8 w-8 text-primary" />
+              <Globe className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold">Nosteq Networks</h1>
-                <p className="text-sm text-muted-foreground">MikroTik Monitoring Dashboard</p>
+                <h1 className="text-2xl font-bold">Nosteq IP Monitor</h1>
+                <p className="text-sm text-muted-foreground">Uptime & Blacklist Intelligence</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
+                <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
-              <Button variant="default" size="sm" onClick={() => setShowAddDevice(true)}>
+              <Button variant="default" size="sm" onClick={() => setShowAddIP(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Device
+                Add IP
               </Button>
               <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
                 <Users className="h-4 w-4 mr-2" />
@@ -97,48 +88,70 @@ const Dashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="devices" className="space-y-6">
-          <TabsList className="bg-card border border-border/50">
-            <TabsTrigger value="devices" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" /> Devices
-            </TabsTrigger>
-            <TabsTrigger value="pppoe" className="flex items-center gap-2">
-              <Wifi className="h-4 w-4" /> PPPoE Sessions
-            </TabsTrigger>
-            <TabsTrigger value="dhcp-arp" className="flex items-center gap-2">
-              <Server className="h-4 w-4" /> DHCP & ARP
-            </TabsTrigger>
-            <TabsTrigger value="firewall" className="flex items-center gap-2">
-              <Flame className="h-4 w-4" /> Firewall & NAT
-            </TabsTrigger>
-            <TabsTrigger value="ip-reputation" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" /> IP Reputation
-            </TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="monitor" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <TabsList className="bg-card border border-border/50">
+              <TabsTrigger value="monitor" className="flex items-center gap-2">
+                <Globe className="h-4 w-4" /> IP Monitor
+              </TabsTrigger>
+              <TabsTrigger value="reputation" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" /> Blacklist Check
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex items-center gap-2">
+                <Bell className="h-4 w-4" /> Notifications
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="devices">
-            <DeviceGrid refreshTrigger={refreshing} />
+            <div className="flex items-center gap-1 bg-card border border-border/50 rounded-lg p-1">
+              <Button
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setViewMode("grid")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "table" ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setViewMode("table")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <TabsContent value="monitor">
+            {viewMode === "grid" ? (
+              <IPMonitorGrid refreshTrigger={refreshTrigger} />
+            ) : (
+              <IPMonitorTable refreshTrigger={refreshTrigger} />
+            )}
           </TabsContent>
 
-          <TabsContent value="pppoe">
-            <PPPoESessionsTab />
-          </TabsContent>
-
-          <TabsContent value="dhcp-arp">
-            <DHCPARPTab />
-          </TabsContent>
-
-          <TabsContent value="firewall">
-            <FirewallNATTab />
-          </TabsContent>
-
-          <TabsContent value="ip-reputation">
+          <TabsContent value="reputation">
             <IPReputationTab />
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            <Tabs defaultValue="settings" className="space-y-4">
+              <TabsList className="bg-secondary/50">
+                <TabsTrigger value="settings">Telegram Settings</TabsTrigger>
+                <TabsTrigger value="log">Notification Log</TabsTrigger>
+              </TabsList>
+              <TabsContent value="settings">
+                <TelegramSettingsTab />
+              </TabsContent>
+              <TabsContent value="log">
+                <NotificationLogTab />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </main>
 
-      <AddDeviceDialog open={showAddDevice} onOpenChange={setShowAddDevice} />
+      <AddIPDialog open={showAddIP} onOpenChange={setShowAddIP} />
     </div>
   );
 };
