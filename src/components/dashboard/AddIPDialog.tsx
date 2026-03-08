@@ -71,6 +71,7 @@ export const AddIPDialog = ({ open, onOpenChange }: AddIPDialogProps) => {
         name: validated.name,
         ip_address: validated.ip_address,
         check_ports: validated.check_ports,
+        notify_number: formData.notify_number.trim() || null,
       }]);
       if (error) throw error;
       toast.success("IP address added!");
