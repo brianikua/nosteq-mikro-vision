@@ -329,6 +329,7 @@ export type Database = {
           model: string | null
           name: string
           password: string
+          password_secret_id: string | null
           port: number
           routeros_version: string | null
           updated_at: string
@@ -341,6 +342,7 @@ export type Database = {
           model?: string | null
           name: string
           password: string
+          password_secret_id?: string | null
           port?: number
           routeros_version?: string | null
           updated_at?: string
@@ -353,6 +355,7 @@ export type Database = {
           model?: string | null
           name?: string
           password?: string
+          password_secret_id?: string | null
           port?: number
           routeros_version?: string | null
           updated_at?: string
