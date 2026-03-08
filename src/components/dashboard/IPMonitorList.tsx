@@ -288,6 +288,14 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                     {pinging[ip.id] ? "Pinging..." : "Ping Now"}
                   </Button>
                   <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); setEditDevice(ip); }}
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                    Edit
+                  </Button>
+                  <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
