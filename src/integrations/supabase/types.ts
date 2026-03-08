@@ -65,6 +65,50 @@ export type Database = {
           },
         ]
       }
+      arp_entries: {
+        Row: {
+          address: string
+          collected_at: string
+          device_id: string
+          id: string
+          interface: string | null
+          is_complete: boolean | null
+          is_dynamic: boolean | null
+          mac_address: string | null
+          mikrotik_id: string | null
+        }
+        Insert: {
+          address: string
+          collected_at?: string
+          device_id: string
+          id?: string
+          interface?: string | null
+          is_complete?: boolean | null
+          is_dynamic?: boolean | null
+          mac_address?: string | null
+          mikrotik_id?: string | null
+        }
+        Update: {
+          address?: string
+          collected_at?: string
+          device_id?: string
+          id?: string
+          interface?: string | null
+          is_complete?: boolean | null
+          is_dynamic?: boolean | null
+          mac_address?: string | null
+          mikrotik_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arp_entries_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blacklist_scans: {
         Row: {
           abuse_category: Database["public"]["Enums"]["abuse_category"] | null
@@ -273,6 +317,56 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      dhcp_leases: {
+        Row: {
+          address: string
+          collected_at: string
+          device_id: string
+          expires_after: string | null
+          host_name: string | null
+          id: string
+          last_seen: string | null
+          mac_address: string | null
+          mikrotik_id: string | null
+          server: string | null
+          status: string | null
+        }
+        Insert: {
+          address: string
+          collected_at?: string
+          device_id: string
+          expires_after?: string | null
+          host_name?: string | null
+          id?: string
+          last_seen?: string | null
+          mac_address?: string | null
+          mikrotik_id?: string | null
+          server?: string | null
+          status?: string | null
+        }
+        Update: {
+          address?: string
+          collected_at?: string
+          device_id?: string
+          expires_after?: string | null
+          host_name?: string | null
+          id?: string
+          last_seen?: string | null
+          mac_address?: string | null
+          mikrotik_id?: string | null
+          server?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dhcp_leases_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       firewall_logs: {
         Row: {
@@ -598,6 +692,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "nat_rules_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pppoe_sessions: {
+        Row: {
+          address: string | null
+          caller_id: string | null
+          collected_at: string
+          device_id: string
+          encoding: string | null
+          id: string
+          mikrotik_id: string | null
+          service: string | null
+          session_id: string | null
+          uptime: string | null
+          username: string
+        }
+        Insert: {
+          address?: string | null
+          caller_id?: string | null
+          collected_at?: string
+          device_id: string
+          encoding?: string | null
+          id?: string
+          mikrotik_id?: string | null
+          service?: string | null
+          session_id?: string | null
+          uptime?: string | null
+          username: string
+        }
+        Update: {
+          address?: string | null
+          caller_id?: string | null
+          collected_at?: string
+          device_id?: string
+          encoding?: string | null
+          id?: string
+          mikrotik_id?: string | null
+          service?: string | null
+          session_id?: string | null
+          uptime?: string | null
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pppoe_sessions_device_id_fkey"
             columns: ["device_id"]
             isOneToOne: false
             referencedRelation: "devices"
