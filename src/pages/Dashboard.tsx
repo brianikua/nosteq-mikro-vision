@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Users } from "lucide-react";
+import { RefreshCw, Plus, LogOut, Globe, Shield, Bell } from "lucide-react";
 import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
@@ -73,10 +73,6 @@ const Dashboard = () => {
               <Button variant="default" size="sm" onClick={() => setShowAddIP(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add IP
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
-                <Users className="h-4 w-4 mr-2" />
-                Users
               </Button>
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
