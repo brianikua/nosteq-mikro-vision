@@ -329,14 +329,31 @@ export const IPReputationTab = () => {
       {/* Reputation Trend Chart */}
       <Card className="border-border/50">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" /> Reputation Score Trend
-          </CardTitle>
-          <CardDescription>
-            {reputationTrend.length > 0
-              ? `Score history across ${reputationTrend.length} scan${reputationTrend.length > 1 ? "s" : ""} — higher is better`
-              : "Run a scan to start tracking reputation trends over time"}
-          </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" /> Reputation Score Trend
+            </CardTitle>
+            <CardDescription className="mt-1">
+              {reputationTrend.length > 0
+                ? `Score history across ${reputationTrend.length} scan${reputationTrend.length > 1 ? "s" : ""} — higher is better`
+                : "Run a scan to start tracking reputation trends over time"}
+            </CardDescription>
+          </div>
+          <div className="flex gap-1">
+            {(["24h", "7d", "30d"] as TrendRange[]).map((range) => (
+              <Button
+                key={range}
+                variant={trendRange === range ? "default" : "outline"}
+                size="sm"
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setTrendRange(range)}
+              >
+                {range}
+              </Button>
+            ))}
+          </div>
+        </div>
         </CardHeader>
         <CardContent>
           {reputationTrend.length === 0 ? (
