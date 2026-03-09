@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
+import { format, isAfter, isBefore, startOfDay, endOfDay, subHours, subDays } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -57,6 +57,8 @@ interface ReputationPoint {
   listings: number;
 }
 
+type TrendRange = "24h" | "7d" | "30d";
+
 export const IPReputationTab = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>("");
@@ -66,6 +68,7 @@ export const IPReputationTab = () => {
   const [loading, setLoading] = useState(true);
   const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
   const [reputationTrend, setReputationTrend] = useState<ReputationPoint[]>([]);
+  const [trendRange, setTrendRange] = useState<TrendRange>("30d");
 
   // Filter states
   const [providerFilter, setProviderFilter] = useState<string>("all");
@@ -174,24 +177,37 @@ export const IPReputationTab = () => {
         setEndDate(undefined);
       }
 
-      // Load reputation history for trend chart (last 30 entries)
-      const { data: trendData } = await supabase
-        .from("reputation_history")
-        .select("reputation_score, active_listings, recorded_at")
-        .eq("device_id", selectedDevice)
-        .order("recorded_at", { ascending: true })
-        .limit(30);
-
-      if (trendData) {
-        setReputationTrend(trendData.map((r: any) => ({
-          date: format(new Date(r.recorded_at), "MMM d, HH:mm"),
-          score: r.reputation_score,
-          listings: r.active_listings,
-        })));
-      }
     };
     loadSummary();
   }, [selectedDevice]);
+
+  // Load reputation trend based on range
+  const loadTrend = async (deviceId: string, range: TrendRange) => {
+    const now = new Date();
+    const since = range === "24h" ? subHours(now, 24) : range === "7d" ? subDays(now, 7) : subDays(now, 30);
+    const dateFormat = range === "24h" ? "HH:mm" : "MMM d, HH:mm";
+
+    const { data: trendData } = await supabase
+      .from("reputation_history")
+      .select("reputation_score, active_listings, recorded_at")
+      .eq("device_id", deviceId)
+      .gte("recorded_at", since.toISOString())
+      .order("recorded_at", { ascending: true })
+      .limit(200);
+
+    if (trendData) {
+      setReputationTrend(trendData.map((r: any) => ({
+        date: format(new Date(r.recorded_at), dateFormat),
+        score: r.reputation_score,
+        listings: r.active_listings,
+      })));
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedDevice) return;
+    loadTrend(selectedDevice, trendRange);
+  }, [selectedDevice, trendRange]);
 
   const handleScan = async () => {
     if (!selectedDevice) return;
@@ -217,19 +233,7 @@ export const IPReputationTab = () => {
         }
 
         // Refresh trend chart
-        const { data: trendData } = await supabase
-          .from("reputation_history")
-          .select("reputation_score, active_listings, recorded_at")
-          .eq("device_id", selectedDevice)
-          .order("recorded_at", { ascending: true })
-          .limit(30);
-        if (trendData) {
-          setReputationTrend(trendData.map((h: any) => ({
-            date: format(new Date(h.recorded_at), "MMM d, HH:mm"),
-            score: h.reputation_score,
-            listings: h.active_listings,
-          })));
-        }
+        await loadTrend(selectedDevice, trendRange);
       }
     } catch (e) {
       console.error("Scan failed:", e);
@@ -325,14 +329,31 @@ export const IPReputationTab = () => {
       {/* Reputation Trend Chart */}
       <Card className="border-border/50">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" /> Reputation Score Trend
-          </CardTitle>
-          <CardDescription>
-            {reputationTrend.length > 0
-              ? `Score history across ${reputationTrend.length} scan${reputationTrend.length > 1 ? "s" : ""} — higher is better`
-              : "Run a scan to start tracking reputation trends over time"}
-          </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" /> Reputation Score Trend
+            </CardTitle>
+            <CardDescription className="mt-1">
+              {reputationTrend.length > 0
+                ? `Score history across ${reputationTrend.length} scan${reputationTrend.length > 1 ? "s" : ""} — higher is better`
+                : "Run a scan to start tracking reputation trends over time"}
+            </CardDescription>
+          </div>
+          <div className="flex gap-1">
+            {(["24h", "7d", "30d"] as TrendRange[]).map((range) => (
+              <Button
+                key={range}
+                variant={trendRange === range ? "default" : "outline"}
+                size="sm"
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setTrendRange(range)}
+              >
+                {range}
+              </Button>
+            ))}
+          </div>
+        </div>
         </CardHeader>
         <CardContent>
           {reputationTrend.length === 0 ? (
