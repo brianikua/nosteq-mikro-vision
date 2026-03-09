@@ -117,11 +117,20 @@ export const IPMonitorGrid = ({ refreshTrigger }: IPMonitorGridProps) => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {ips.map((ip) => (
-        <IPCard key={ip.id} ip={ip} pinging={!!pinging[ip.id]} onPing={handlePing} onDelete={handleDelete} />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {ips.map((ip) => (
+          <IPCard key={ip.id} ip={ip} pinging={!!pinging[ip.id]} onPing={handlePing} onDelete={setDeleteTarget} />
+        ))}
+      </div>
+      <DeleteIPDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        deviceName={deleteTarget?.name ?? ""}
+        ipAddress={deleteTarget?.ip_address ?? ""}
+        onConfirm={handleDeleteConfirm}
+      />
+    </>
   );
 };
 
