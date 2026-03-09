@@ -307,7 +307,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={(e) => handleDelete(e, ip)}
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(ip); }}
                   >
                     <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                     Remove

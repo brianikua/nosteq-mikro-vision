@@ -184,7 +184,7 @@ export const IPMonitorTable = ({ refreshTrigger }: IPMonitorTableProps) => {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(ip)}
+                      onClick={() => setDeleteTarget(ip)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -195,6 +195,13 @@ export const IPMonitorTable = ({ refreshTrigger }: IPMonitorTableProps) => {
           })}
         </TableBody>
       </Table>
+      <DeleteIPDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        deviceName={deleteTarget?.name ?? ""}
+        ipAddress={deleteTarget?.ip_address ?? ""}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };

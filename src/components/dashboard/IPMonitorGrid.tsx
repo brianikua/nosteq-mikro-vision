@@ -82,12 +82,15 @@ export const IPMonitorGrid = ({ refreshTrigger }: IPMonitorGridProps) => {
     }
   };
 
-  const handleDelete = async (ip: MonitoredIP) => {
-    if (!confirm(`Remove ${ip.name} (${ip.ip_address})?`)) return;
+  const [deleteTarget, setDeleteTarget] = useState<MonitoredIP | null>(null);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      const { error } = await supabase.from("devices").delete().eq("id", ip.id);
+      const { error } = await supabase.from("devices").delete().eq("id", deleteTarget.id);
       if (error) throw error;
       toast.success("IP removed");
+      setDeleteTarget(null);
       fetchIPs();
     } catch (e) {
       console.error("Delete failed:", e);
