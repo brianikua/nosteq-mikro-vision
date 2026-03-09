@@ -495,6 +495,14 @@ Deno.serve(async (req) => {
         await supabase.from("ip_reputation_summary").insert({ device_id: device.id, ...summaryData });
       }
 
+      // ── Record reputation history for trend tracking ──
+      await supabase.from("reputation_history").insert({
+        device_id: device.id,
+        ip_address: ipToCheck,
+        reputation_score: reputationScore,
+        active_listings: listedCount,
+      });
+
       results.push({
         device: device.name,
         ip: ipToCheck,
