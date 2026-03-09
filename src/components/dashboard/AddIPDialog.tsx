@@ -119,7 +119,7 @@ export const AddIPDialog = ({ open, onOpenChange, onSaved }: AddIPDialogProps) =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add IP Address</DialogTitle>
           <DialogDescription>Add an IP to monitor for uptime and blacklist status</DialogDescription>
