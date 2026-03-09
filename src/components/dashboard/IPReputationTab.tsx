@@ -318,19 +318,96 @@ export const IPReputationTab = () => {
       {/* Blacklist History Timeline */}
       <Card className="border-border/50">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <History className="h-5 w-5" /> Blacklisting History Timeline
-          </CardTitle>
-          <CardDescription>
-            Historical record of blacklist detections for this IP address.
-          </CardDescription>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-5 w-5" /> Blacklisting History Timeline
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Historical record of blacklist detections for this IP address.
+                {allHistoryEntries.length > 0 && (
+                  <span className="ml-1">
+                    {filteredHistory.reduce((sum, g) => sum + g.listedCount, 0)} of {allHistoryEntries.length} shown
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            {/* Filters */}
+            {allHistoryEntries.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                {/* Provider filter */}
+                <Select value={providerFilter} onValueChange={setProviderFilter}>
+                  <SelectTrigger className="h-8 w-44 text-xs">
+                    <SelectValue placeholder="All providers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All providers</SelectItem>
+                    {uniqueProviders.map((p) => (
+                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Start date */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("h-8 text-xs gap-1.5", !startDate && "text-muted-foreground")}>
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {startDate ? format(startDate, "MMM d, yyyy") : "From date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      disabled={(date) => endDate ? isAfter(date, endDate) : false}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                {/* End date */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("h-8 text-xs gap-1.5", !endDate && "text-muted-foreground")}>
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {endDate ? format(endDate, "MMM d, yyyy") : "To date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      disabled={(date) => startDate ? isBefore(date, startDate) : false}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                {/* Clear filters */}
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-xs gap-1" onClick={clearFilters}>
+                    <X className="h-3.5 w-3.5" /> Clear
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          {history.length === 0 ? (
+          {allHistoryEntries.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <CheckCircle className="h-12 w-12 mx-auto mb-3 text-[hsl(var(--success))]" />
               <p className="font-medium">No blacklist detections</p>
               <p className="text-sm">This IP has not been found on any blacklists.</p>
+            </div>
+          ) : filteredHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Filter className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">No results match filters</p>
+              <Button variant="link" size="sm" className="mt-1 text-xs" onClick={clearFilters}>Clear filters</Button>
             </div>
           ) : (
             <div className="relative">
@@ -338,7 +415,7 @@ export const IPReputationTab = () => {
               <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
               
               <div className="space-y-6">
-                {history.map((group) => (
+                {filteredHistory.map((group) => (
                   <div key={group.date} className="relative pl-10">
                     {/* Timeline dot */}
                     <div className="absolute left-2.5 top-1 w-3 h-3 rounded-full bg-destructive border-2 border-background" />
