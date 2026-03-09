@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X } from "lucide-react";
+import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
@@ -55,11 +55,58 @@ export const IPReputationTab = () => {
   const [lastResults, setLastResults] = useState<ScanResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [seedingData, setSeedingData] = useState(false);
   
   // Filter states
   const [providerFilter, setProviderFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+
+  const handleSeedSampleData = async () => {
+    if (!selectedDevice) return;
+    const dev = devices.find(d => d.id === selectedDevice);
+    if (!dev) return;
+    setSeedingData(true);
+    try {
+      const providers = [
+        "Spamhaus ZEN", "Barracuda", "SORBS DNSBL", "SpamCop",
+        "UCEPROTECT Level 1", "Abuseat CBL", "Composite Blocking List",
+      ];
+      const now = new Date();
+      const rows = providers.flatMap((provider, pi) => {
+        const daysAgo = [0, 1, 3, 7, 14];
+        return daysAgo.slice(0, 2 + (pi % 3)).map((d) => {
+          const scannedAt = new Date(now);
+          scannedAt.setDate(scannedAt.getDate() - d);
+          scannedAt.setHours(8 + pi, (pi * 7) % 60, 0, 0);
+          return {
+            device_id: selectedDevice,
+            ip_address: dev.ip_address,
+            provider,
+            confidence_score: 50 + Math.floor(Math.random() * 50),
+            scanned_at: scannedAt.toISOString(),
+          };
+        });
+      });
+      const { error } = await supabase.from("blacklist_scans").insert(rows);
+      if (error) throw error;
+      toast.success(`Inserted ${rows.length} sample blacklist entries`);
+      // Reload history
+      const { data: historyData } = await supabase
+        .from("blacklist_scans")
+        .select("id, provider, ip_address, scanned_at, confidence_score")
+        .eq("device_id", selectedDevice)
+        .gt("confidence_score", 0)
+        .order("scanned_at", { ascending: false })
+        .limit(500);
+      if (historyData) setAllHistoryEntries(historyData);
+    } catch (e: any) {
+      console.error("Seed failed:", e);
+      toast.error("Failed to seed data: " + (e.message || "Unknown error"));
+    } finally {
+      setSeedingData(false);
+    }
+  };
 
   // Get unique providers from history
   const uniqueProviders = useMemo(() => {
@@ -236,6 +283,18 @@ export const IPReputationTab = () => {
             <><Search className="h-4 w-4 mr-2" /> Run Blacklist Scan</>
           )}
         </Button>
+        {import.meta.env.DEV && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-dashed border-warning text-warning hover:bg-warning/10"
+            disabled={!selectedDevice || seedingData}
+            onClick={handleSeedSampleData}
+          >
+            <FlaskConical className="h-4 w-4 mr-1.5" />
+            {seedingData ? "Seeding..." : "Seed Test Data"}
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
