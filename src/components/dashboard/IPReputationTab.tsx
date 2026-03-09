@@ -177,24 +177,37 @@ export const IPReputationTab = () => {
         setEndDate(undefined);
       }
 
-      // Load reputation history for trend chart (last 30 entries)
-      const { data: trendData } = await supabase
-        .from("reputation_history")
-        .select("reputation_score, active_listings, recorded_at")
-        .eq("device_id", selectedDevice)
-        .order("recorded_at", { ascending: true })
-        .limit(30);
-
-      if (trendData) {
-        setReputationTrend(trendData.map((r: any) => ({
-          date: format(new Date(r.recorded_at), "MMM d, HH:mm"),
-          score: r.reputation_score,
-          listings: r.active_listings,
-        })));
-      }
     };
     loadSummary();
   }, [selectedDevice]);
+
+  // Load reputation trend based on range
+  const loadTrend = async (deviceId: string, range: TrendRange) => {
+    const now = new Date();
+    const since = range === "24h" ? subHours(now, 24) : range === "7d" ? subDays(now, 7) : subDays(now, 30);
+    const dateFormat = range === "24h" ? "HH:mm" : "MMM d, HH:mm";
+
+    const { data: trendData } = await supabase
+      .from("reputation_history")
+      .select("reputation_score, active_listings, recorded_at")
+      .eq("device_id", deviceId)
+      .gte("recorded_at", since.toISOString())
+      .order("recorded_at", { ascending: true })
+      .limit(200);
+
+    if (trendData) {
+      setReputationTrend(trendData.map((r: any) => ({
+        date: format(new Date(r.recorded_at), dateFormat),
+        score: r.reputation_score,
+        listings: r.active_listings,
+      })));
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedDevice) return;
+    loadTrend(selectedDevice, trendRange);
+  }, [selectedDevice, trendRange]);
 
   const handleScan = async () => {
     if (!selectedDevice) return;
