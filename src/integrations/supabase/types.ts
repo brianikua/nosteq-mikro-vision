@@ -203,6 +203,41 @@ export type Database = {
         }
         Relationships: []
       }
+      reputation_history: {
+        Row: {
+          active_listings: number
+          device_id: string
+          id: string
+          ip_address: string
+          recorded_at: string
+          reputation_score: number
+        }
+        Insert: {
+          active_listings?: number
+          device_id: string
+          id?: string
+          ip_address: string
+          recorded_at?: string
+          reputation_score: number
+        }
+        Update: {
+          active_listings?: number
+          device_id?: string
+          id?: string
+          ip_address?: string
+          recorded_at?: string
+          reputation_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reputation_history_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sms_config: {
         Row: {
           client_number: string

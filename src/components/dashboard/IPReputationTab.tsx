@@ -4,13 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X } from "lucide-react";
+import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
+} from "recharts";
+
 
 interface Device {
   id: string;
@@ -47,6 +51,12 @@ interface GroupedHistory {
   listedCount: number;
 }
 
+interface ReputationPoint {
+  date: string;
+  score: number;
+  listings: number;
+}
+
 export const IPReputationTab = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>("");
@@ -55,7 +65,8 @@ export const IPReputationTab = () => {
   const [lastResults, setLastResults] = useState<ScanResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
-  
+  const [reputationTrend, setReputationTrend] = useState<ReputationPoint[]>([]);
+
   // Filter states
   const [providerFilter, setProviderFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
@@ -162,6 +173,22 @@ export const IPReputationTab = () => {
         setStartDate(undefined);
         setEndDate(undefined);
       }
+
+      // Load reputation history for trend chart (last 30 entries)
+      const { data: trendData } = await supabase
+        .from("reputation_history")
+        .select("reputation_score, active_listings, recorded_at")
+        .eq("device_id", selectedDevice)
+        .order("recorded_at", { ascending: true })
+        .limit(30);
+
+      if (trendData) {
+        setReputationTrend(trendData.map((r: any) => ({
+          date: format(new Date(r.recorded_at), "MMM d, HH:mm"),
+          score: r.reputation_score,
+          listings: r.active_listings,
+        })));
+      }
     };
     loadSummary();
   }, [selectedDevice]);
@@ -187,6 +214,21 @@ export const IPReputationTab = () => {
 
         if (r.details) {
           setLastResults(r.details);
+        }
+
+        // Refresh trend chart
+        const { data: trendData } = await supabase
+          .from("reputation_history")
+          .select("reputation_score, active_listings, recorded_at")
+          .eq("device_id", selectedDevice)
+          .order("recorded_at", { ascending: true })
+          .limit(30);
+        if (trendData) {
+          setReputationTrend(trendData.map((h: any) => ({
+            date: format(new Date(h.recorded_at), "MMM d, HH:mm"),
+            score: h.reputation_score,
+            listings: h.active_listings,
+          })));
         }
       }
     } catch (e) {
@@ -280,7 +322,92 @@ export const IPReputationTab = () => {
         </Card>
       </div>
 
+      {/* Reputation Trend Chart */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" /> Reputation Score Trend
+          </CardTitle>
+          <CardDescription>
+            {reputationTrend.length > 0
+              ? `Score history across ${reputationTrend.length} scan${reputationTrend.length > 1 ? "s" : ""} — higher is better`
+              : "Run a scan to start tracking reputation trends over time"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {reputationTrend.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[180px] text-muted-foreground gap-2">
+              <TrendingUp className="h-10 w-10 opacity-30" />
+              <p className="text-sm">No trend data yet — run a scan to begin</p>
+            </div>
+          ) : (
+            <div className="h-[220px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={reputationTrend} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                    ticks={[0, 25, 50, 75, 100]}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      color: "hsl(var(--popover-foreground))",
+                    }}
+                    formatter={(value: number, name: string) => [
+                      name === "score" ? `${value}/100` : value,
+                      name === "score" ? "Reputation Score" : "Active Listings",
+                    ]}
+                  />
+                  <ReferenceLine y={80} stroke="hsl(var(--success))" strokeDasharray="4 4" strokeOpacity={0.5} />
+                  <ReferenceLine y={50} stroke="hsl(var(--warning))" strokeDasharray="4 4" strokeOpacity={0.5} />
+                  <Area
+                    type="monotone"
+                    dataKey="score"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    fill="url(#scoreGradient)"
+                    dot={{ fill: "hsl(var(--primary))", r: 3, strokeWidth: 0 }}
+                    activeDot={{ r: 5, fill: "hsl(var(--primary))" }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground justify-end">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-6 border-t-2 border-dashed border-[hsl(var(--success))]" />
+                  Good (≥80)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-6 border-t-2 border-dashed border-[hsl(var(--warning))]" />
+                  Fair (≥50)
+                </span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {lastResults.length > 0 && (
+
         <Card className="border-border/50">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
