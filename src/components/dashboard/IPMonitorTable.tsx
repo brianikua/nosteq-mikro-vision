@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Wifi, Trash2, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { DeleteIPDialog } from "./DeleteIPDialog";
 
 interface MonitoredIP {
   id: string;
