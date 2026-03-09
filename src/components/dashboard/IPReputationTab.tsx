@@ -109,6 +109,26 @@ export const IPReputationTab = () => {
     }
   };
 
+  const handleClearTestData = async () => {
+    if (!selectedDevice) return;
+    setClearingData(true);
+    try {
+      const { error } = await supabase
+        .from("blacklist_scans")
+        .delete()
+        .eq("device_id", selectedDevice);
+      if (error) throw error;
+      toast.success("Cleared all blacklist scan data for this device");
+      setAllHistoryEntries([]);
+      setLastResults([]);
+    } catch (e: any) {
+      console.error("Clear failed:", e);
+      toast.error("Failed to clear data: " + (e.message || "Unknown error"));
+    } finally {
+      setClearingData(false);
+    }
+  };
+
   // Get unique providers from history
   const uniqueProviders = useMemo(() => {
     const providers = new Set(allHistoryEntries.map(e => e.provider));
