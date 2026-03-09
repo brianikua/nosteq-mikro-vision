@@ -29,6 +29,7 @@ const phoneRegex = /^\+?[0-9]{7,15}$/;
 interface AddIPDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSaved?: () => void;
 }
 
 export const AddIPDialog = ({ open, onOpenChange }: AddIPDialogProps) => {
