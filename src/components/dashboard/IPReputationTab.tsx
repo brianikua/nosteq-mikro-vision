@@ -236,30 +236,6 @@ export const IPReputationTab = () => {
             <><Search className="h-4 w-4 mr-2" /> Run Blacklist Scan</>
           )}
         </Button>
-        {import.meta.env.DEV && (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-dashed border-warning text-warning hover:bg-warning/10"
-              disabled={!selectedDevice || seedingData}
-              onClick={handleSeedSampleData}
-            >
-              <FlaskConical className="h-4 w-4 mr-1.5" />
-              {seedingData ? "Seeding..." : "Seed Test Data"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-dashed border-destructive text-destructive hover:bg-destructive/10"
-              disabled={!selectedDevice || clearingData || allHistoryEntries.length === 0}
-              onClick={handleClearTestData}
-            >
-              <Trash2 className="h-4 w-4 mr-1.5" />
-              {clearingData ? "Clearing..." : "Clear Test Data"}
-            </Button>
-          </>
-        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
