@@ -270,6 +270,73 @@ export const IPReputationTab = () => {
         </Card>
       )}
 
+      {/* Blacklist History Timeline */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <History className="h-5 w-5" /> Blacklisting History Timeline
+          </CardTitle>
+          <CardDescription>
+            Historical record of blacklist detections for this IP address.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {history.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <CheckCircle className="h-12 w-12 mx-auto mb-3 text-[hsl(var(--success))]" />
+              <p className="font-medium">No blacklist detections</p>
+              <p className="text-sm">This IP has not been found on any blacklists.</p>
+            </div>
+          ) : (
+            <div className="relative">
+              {/* Timeline line */}
+              <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
+              
+              <div className="space-y-6">
+                {history.map((group) => (
+                  <div key={group.date} className="relative pl-10">
+                    {/* Timeline dot */}
+                    <div className="absolute left-2.5 top-1 w-3 h-3 rounded-full bg-destructive border-2 border-background" />
+                    
+                    {/* Date header */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">
+                        {format(new Date(group.date), "MMMM d, yyyy")}
+                      </span>
+                      <Badge variant="destructive" className="text-xs">
+                        {group.listedCount} {group.listedCount === 1 ? "listing" : "listings"}
+                      </Badge>
+                    </div>
+                    
+                    {/* Entries for this date */}
+                    <div className="space-y-1.5">
+                      {group.entries.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="flex items-center justify-between px-3 py-2 rounded-md text-sm bg-destructive/5 border border-destructive/20"
+                        >
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {format(new Date(entry.scanned_at), "HH:mm")}
+                            </span>
+                            <span className="truncate">{entry.provider}</span>
+                          </div>
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {entry.ip_address}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Auto-scan status */}
       <Card className="border-border/50">
         <CardHeader className="pb-3">
