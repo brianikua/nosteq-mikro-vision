@@ -1,13 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar } from "lucide-react";
+import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { format } from "date-fns";
+import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface Device {
   id: string;
@@ -52,6 +55,58 @@ export const IPReputationTab = () => {
   const [lastResults, setLastResults] = useState<ScanResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<GroupedHistory[]>([]);
+  const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
+  
+  // Filter states
+  const [providerFilter, setProviderFilter] = useState<string>("all");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+
+  // Get unique providers from history
+  const uniqueProviders = useMemo(() => {
+    const providers = new Set(allHistoryEntries.map(e => e.provider));
+    return Array.from(providers).sort();
+  }, [allHistoryEntries]);
+
+  // Filter and group history
+  const filteredHistory = useMemo(() => {
+    let filtered = allHistoryEntries;
+
+    // Apply provider filter
+    if (providerFilter !== "all") {
+      filtered = filtered.filter(e => e.provider === providerFilter);
+    }
+
+    // Apply date range filter
+    if (startDate) {
+      filtered = filtered.filter(e => !isBefore(new Date(e.scanned_at), startOfDay(startDate)));
+    }
+    if (endDate) {
+      filtered = filtered.filter(e => !isAfter(new Date(e.scanned_at), endOfDay(endDate)));
+    }
+
+    // Group by date
+    const grouped = filtered.reduce((acc: Record<string, HistoryEntry[]>, entry) => {
+      const date = format(new Date(entry.scanned_at), "yyyy-MM-dd");
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(entry);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped).map(([date, entries]) => ({
+      date,
+      entries,
+      listedCount: entries.length,
+    }));
+  }, [allHistoryEntries, providerFilter, startDate, endDate]);
+
+  const clearFilters = () => {
+    setProviderFilter("all");
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
+
+  const hasActiveFilters = providerFilter !== "all" || startDate || endDate;
 
   useEffect(() => {
     const load = async () => {
