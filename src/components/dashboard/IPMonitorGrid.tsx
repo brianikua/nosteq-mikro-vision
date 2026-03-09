@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, Wifi, Trash2, Shield, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { DeleteIPDialog } from "./DeleteIPDialog";
 
 interface MonitoredIP {
   id: string;
@@ -81,12 +82,15 @@ export const IPMonitorGrid = ({ refreshTrigger }: IPMonitorGridProps) => {
     }
   };
 
-  const handleDelete = async (ip: MonitoredIP) => {
-    if (!confirm(`Remove ${ip.name} (${ip.ip_address})?`)) return;
+  const [deleteTarget, setDeleteTarget] = useState<MonitoredIP | null>(null);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      const { error } = await supabase.from("devices").delete().eq("id", ip.id);
+      const { error } = await supabase.from("devices").delete().eq("id", deleteTarget.id);
       if (error) throw error;
       toast.success("IP removed");
+      setDeleteTarget(null);
       fetchIPs();
     } catch (e) {
       console.error("Delete failed:", e);
@@ -113,11 +117,20 @@ export const IPMonitorGrid = ({ refreshTrigger }: IPMonitorGridProps) => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {ips.map((ip) => (
-        <IPCard key={ip.id} ip={ip} pinging={!!pinging[ip.id]} onPing={handlePing} onDelete={handleDelete} />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {ips.map((ip) => (
+          <IPCard key={ip.id} ip={ip} pinging={!!pinging[ip.id]} onPing={handlePing} onDelete={setDeleteTarget} />
+        ))}
+      </div>
+      <DeleteIPDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        deviceName={deleteTarget?.name ?? ""}
+        ipAddress={deleteTarget?.ip_address ?? ""}
+        onConfirm={handleDeleteConfirm}
+      />
+    </>
   );
 };
 

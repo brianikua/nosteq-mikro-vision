@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Wifi, Trash2, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { DeleteIPDialog } from "./DeleteIPDialog";
 
 interface MonitoredIP {
   id: string;
@@ -77,12 +78,15 @@ export const IPMonitorTable = ({ refreshTrigger }: IPMonitorTableProps) => {
     }
   };
 
-  const handleDelete = async (ip: MonitoredIP) => {
-    if (!confirm(`Remove ${ip.name} (${ip.ip_address})?`)) return;
+  const [deleteTarget, setDeleteTarget] = useState<MonitoredIP | null>(null);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      const { error } = await supabase.from("devices").delete().eq("id", ip.id);
+      const { error } = await supabase.from("devices").delete().eq("id", deleteTarget.id);
       if (error) throw error;
       toast.success("IP removed");
+      setDeleteTarget(null);
       fetchIPs();
     } catch {
       toast.error("Failed to remove IP");
@@ -180,7 +184,7 @@ export const IPMonitorTable = ({ refreshTrigger }: IPMonitorTableProps) => {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(ip)}
+                      onClick={() => setDeleteTarget(ip)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -191,6 +195,13 @@ export const IPMonitorTable = ({ refreshTrigger }: IPMonitorTableProps) => {
           })}
         </TableBody>
       </Table>
+      <DeleteIPDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        deviceName={deleteTarget?.name ?? ""}
+        ipAddress={deleteTarget?.ip_address ?? ""}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };

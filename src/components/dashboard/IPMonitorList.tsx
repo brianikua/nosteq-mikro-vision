@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Loader2, Wifi, Trash2, Shield, Clock, ChevronDown, Globe, Pencil } from "lucide-react";
 import { EditIPDialog } from "./EditIPDialog";
+import { DeleteIPDialog } from "./DeleteIPDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -98,13 +99,15 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, ip: MonitoredIP) => {
-    e.stopPropagation();
-    if (!confirm(`Remove ${ip.name} (${ip.ip_address})?`)) return;
+  const [deleteTarget, setDeleteTarget] = useState<MonitoredIP | null>(null);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      const { error } = await supabase.from("devices").delete().eq("id", ip.id);
+      const { error } = await supabase.from("devices").delete().eq("id", deleteTarget.id);
       if (error) throw error;
       toast.success("IP removed");
+      setDeleteTarget(null);
       fetchIPs();
     } catch {
       toast.error("Failed to remove IP");
@@ -304,7 +307,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={(e) => handleDelete(e, ip)}
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(ip); }}
                   >
                     <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                     Remove
@@ -320,6 +323,13 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
         open={!!editDevice}
         onOpenChange={(open) => { if (!open) setEditDevice(null); }}
         onSaved={fetchIPs}
+      />
+      <DeleteIPDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        deviceName={deleteTarget?.name ?? ""}
+        ipAddress={deleteTarget?.ip_address ?? ""}
+        onConfirm={handleDeleteConfirm}
       />
     </div>
   );
