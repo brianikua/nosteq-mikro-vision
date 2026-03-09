@@ -57,6 +57,8 @@ interface ReputationPoint {
   listings: number;
 }
 
+type TrendRange = "24h" | "7d" | "30d";
+
 export const IPReputationTab = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>("");
