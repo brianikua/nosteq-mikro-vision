@@ -104,7 +104,7 @@ export const AddIPDialog = ({ open, onOpenChange, onSaved }: AddIPDialogProps) =
       setFormData({ name: "", ip_address: "" });
       setPorts([80, 443]);
       setNotifyNumbers([]);
-      window.location.reload();
+      onSaved?.();
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
