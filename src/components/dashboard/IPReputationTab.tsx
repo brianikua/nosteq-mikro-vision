@@ -233,19 +233,7 @@ export const IPReputationTab = () => {
         }
 
         // Refresh trend chart
-        const { data: trendData } = await supabase
-          .from("reputation_history")
-          .select("reputation_score, active_listings, recorded_at")
-          .eq("device_id", selectedDevice)
-          .order("recorded_at", { ascending: true })
-          .limit(30);
-        if (trendData) {
-          setReputationTrend(trendData.map((h: any) => ({
-            date: format(new Date(h.recorded_at), "MMM d, HH:mm"),
-            score: h.reputation_score,
-            listings: h.active_listings,
-          })));
-        }
+        await loadTrend(selectedDevice, trendRange);
       }
     } catch (e) {
       console.error("Scan failed:", e);
