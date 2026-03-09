@@ -56,6 +56,7 @@ export const IPReputationTab = () => {
   const [loading, setLoading] = useState(true);
   const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
   const [seedingData, setSeedingData] = useState(false);
+  const [clearingData, setClearingData] = useState(false);
   
   // Filter states
   const [providerFilter, setProviderFilter] = useState<string>("all");
