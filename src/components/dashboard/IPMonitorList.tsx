@@ -324,6 +324,13 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
         onOpenChange={(open) => { if (!open) setEditDevice(null); }}
         onSaved={fetchIPs}
       />
+      <DeleteIPDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        deviceName={deleteTarget?.name ?? ""}
+        ipAddress={deleteTarget?.ip_address ?? ""}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };
