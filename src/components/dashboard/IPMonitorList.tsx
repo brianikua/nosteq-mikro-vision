@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Loader2, Wifi, Trash2, Shield, Clock, ChevronDown, Globe, Pencil } from "lucide-react";
 import { EditIPDialog } from "./EditIPDialog";
+import { DeleteIPDialog } from "./DeleteIPDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
