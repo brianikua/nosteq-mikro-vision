@@ -68,6 +68,7 @@ export const IPReputationTab = () => {
   const [loading, setLoading] = useState(true);
   const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
   const [reputationTrend, setReputationTrend] = useState<ReputationPoint[]>([]);
+  const [trendRange, setTrendRange] = useState<TrendRange>("30d");
 
   // Filter states
   const [providerFilter, setProviderFilter] = useState<string>("all");
