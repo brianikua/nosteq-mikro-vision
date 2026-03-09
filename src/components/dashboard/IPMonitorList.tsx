@@ -145,10 +145,14 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
             onOpenChange={(open) => setExpandedId(open ? ip.id : null)}
           >
             <CollapsibleTrigger asChild>
-              <button
+              {/* Use div instead of button to avoid invalid nested <button> inside <button> */}
+              <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") e.currentTarget.click(); }}
                 className={cn(
-                  "w-full flex items-center gap-4 px-4 py-3 rounded-lg border transition-all duration-200 text-left",
-                  "hover:bg-accent/50 cursor-pointer",
+                  "w-full flex items-center gap-4 px-4 py-3 rounded-lg border transition-all duration-200 text-left cursor-pointer",
+                  "hover:bg-accent/50",
                   isOpen
                     ? "bg-accent/30 border-primary/40 rounded-b-none"
                     : "bg-card/50 border-border/50"
@@ -209,7 +213,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                     )}
                   />
                 </div>
-              </button>
+              </div>
             </CollapsibleTrigger>
 
             <CollapsibleContent>
