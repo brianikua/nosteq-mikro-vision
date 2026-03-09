@@ -173,6 +173,22 @@ export const IPReputationTab = () => {
         setStartDate(undefined);
         setEndDate(undefined);
       }
+
+      // Load reputation history for trend chart (last 30 entries)
+      const { data: trendData } = await supabase
+        .from("reputation_history")
+        .select("reputation_score, active_listings, recorded_at")
+        .eq("device_id", selectedDevice)
+        .order("recorded_at", { ascending: true })
+        .limit(30);
+
+      if (trendData) {
+        setReputationTrend(trendData.map((r: any) => ({
+          date: format(new Date(r.recorded_at), "MMM d, HH:mm"),
+          score: r.reputation_score,
+          listings: r.active_listings,
+        })));
+      }
     };
     loadSummary();
   }, [selectedDevice]);
