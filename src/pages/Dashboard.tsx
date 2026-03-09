@@ -141,7 +141,7 @@ const Dashboard = () => {
         </Tabs>
       </main>
 
-      <AddIPDialog open={showAddIP} onOpenChange={setShowAddIP} />
+      <AddIPDialog open={showAddIP} onOpenChange={setShowAddIP} onSaved={handleRefresh} />
     </div>
   );
 };

@@ -29,9 +29,10 @@ const phoneRegex = /^\+?[0-9]{7,15}$/;
 interface AddIPDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSaved?: () => void;
 }
 
-export const AddIPDialog = ({ open, onOpenChange }: AddIPDialogProps) => {
+export const AddIPDialog = ({ open, onOpenChange, onSaved }: AddIPDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ name: "", ip_address: "" });
   const [ports, setPorts] = useState<number[]>([80, 443]);
@@ -103,7 +104,7 @@ export const AddIPDialog = ({ open, onOpenChange }: AddIPDialogProps) => {
       setFormData({ name: "", ip_address: "" });
       setPorts([80, 443]);
       setNotifyNumbers([]);
-      window.location.reload();
+      onSaved?.();
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
