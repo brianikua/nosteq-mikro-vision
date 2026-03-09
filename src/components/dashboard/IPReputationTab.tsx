@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb } from "lucide-react";
+import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { format } from "date-fns";
 
 interface Device {
   id: string;
@@ -29,6 +30,20 @@ interface ReputationSummary {
   last_scan_at: string | null;
 }
 
+interface HistoryEntry {
+  id: string;
+  provider: string;
+  ip_address: string;
+  scanned_at: string;
+  confidence_score: number | null;
+}
+
+interface GroupedHistory {
+  date: string;
+  entries: HistoryEntry[];
+  listedCount: number;
+}
+
 export const IPReputationTab = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>("");
@@ -36,6 +51,7 @@ export const IPReputationTab = () => {
   const [summary, setSummary] = useState<ReputationSummary | null>(null);
   const [lastResults, setLastResults] = useState<ScanResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<GroupedHistory[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -74,6 +90,33 @@ export const IPReputationTab = () => {
           type: "check",
           category: null,
         })));
+      }
+
+      // Load history for timeline (only listings)
+      const { data: historyData } = await supabase
+        .from("blacklist_scans")
+        .select("id, provider, ip_address, scanned_at, confidence_score")
+        .eq("device_id", selectedDevice)
+        .gt("confidence_score", 0)
+        .order("scanned_at", { ascending: false })
+        .limit(200);
+
+      if (historyData) {
+        // Group by date
+        const grouped = historyData.reduce((acc: Record<string, HistoryEntry[]>, entry) => {
+          const date = format(new Date(entry.scanned_at), "yyyy-MM-dd");
+          if (!acc[date]) acc[date] = [];
+          acc[date].push(entry);
+          return acc;
+        }, {});
+
+        const groupedArray: GroupedHistory[] = Object.entries(grouped).map(([date, entries]) => ({
+          date,
+          entries,
+          listedCount: entries.length,
+        }));
+
+        setHistory(groupedArray);
       }
     };
     loadSummary();
