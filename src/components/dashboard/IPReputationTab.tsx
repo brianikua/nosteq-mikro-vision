@@ -51,6 +51,12 @@ interface GroupedHistory {
   listedCount: number;
 }
 
+interface ReputationPoint {
+  date: string;
+  score: number;
+  listings: number;
+}
+
 export const IPReputationTab = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>("");
@@ -59,7 +65,8 @@ export const IPReputationTab = () => {
   const [lastResults, setLastResults] = useState<ScanResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
-  
+  const [reputationTrend, setReputationTrend] = useState<ReputationPoint[]>([]);
+
   // Filter states
   const [providerFilter, setProviderFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
