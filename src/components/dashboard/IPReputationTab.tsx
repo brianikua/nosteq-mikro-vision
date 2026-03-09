@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, FlaskConical } from "lucide-react";
+import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, FlaskConical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
@@ -56,6 +56,7 @@ export const IPReputationTab = () => {
   const [loading, setLoading] = useState(true);
   const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
   const [seedingData, setSeedingData] = useState(false);
+  const [clearingData, setClearingData] = useState(false);
   
   // Filter states
   const [providerFilter, setProviderFilter] = useState<string>("all");
@@ -105,6 +106,26 @@ export const IPReputationTab = () => {
       toast.error("Failed to seed data: " + (e.message || "Unknown error"));
     } finally {
       setSeedingData(false);
+    }
+  };
+
+  const handleClearTestData = async () => {
+    if (!selectedDevice) return;
+    setClearingData(true);
+    try {
+      const { error } = await supabase
+        .from("blacklist_scans")
+        .delete()
+        .eq("device_id", selectedDevice);
+      if (error) throw error;
+      toast.success("Cleared all blacklist scan data for this device");
+      setAllHistoryEntries([]);
+      setLastResults([]);
+    } catch (e: any) {
+      console.error("Clear failed:", e);
+      toast.error("Failed to clear data: " + (e.message || "Unknown error"));
+    } finally {
+      setClearingData(false);
     }
   };
 
@@ -284,16 +305,28 @@ export const IPReputationTab = () => {
           )}
         </Button>
         {import.meta.env.DEV && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-dashed border-warning text-warning hover:bg-warning/10"
-            disabled={!selectedDevice || seedingData}
-            onClick={handleSeedSampleData}
-          >
-            <FlaskConical className="h-4 w-4 mr-1.5" />
-            {seedingData ? "Seeding..." : "Seed Test Data"}
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-dashed border-warning text-warning hover:bg-warning/10"
+              disabled={!selectedDevice || seedingData}
+              onClick={handleSeedSampleData}
+            >
+              <FlaskConical className="h-4 w-4 mr-1.5" />
+              {seedingData ? "Seeding..." : "Seed Test Data"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-dashed border-destructive text-destructive hover:bg-destructive/10"
+              disabled={!selectedDevice || clearingData || allHistoryEntries.length === 0}
+              onClick={handleClearTestData}
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              {clearingData ? "Clearing..." : "Clear Test Data"}
+            </Button>
+          </>
         )}
       </div>
 
