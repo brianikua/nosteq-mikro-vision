@@ -154,24 +154,14 @@ export const IPReputationTab = () => {
         .eq("device_id", selectedDevice)
         .gt("confidence_score", 0)
         .order("scanned_at", { ascending: false })
-        .limit(200);
+        .limit(500);
 
       if (historyData) {
-        // Group by date
-        const grouped = historyData.reduce((acc: Record<string, HistoryEntry[]>, entry) => {
-          const date = format(new Date(entry.scanned_at), "yyyy-MM-dd");
-          if (!acc[date]) acc[date] = [];
-          acc[date].push(entry);
-          return acc;
-        }, {});
-
-        const groupedArray: GroupedHistory[] = Object.entries(grouped).map(([date, entries]) => ({
-          date,
-          entries,
-          listedCount: entries.length,
-        }));
-
-        setHistory(groupedArray);
+        setAllHistoryEntries(historyData);
+        // Clear filters when device changes
+        setProviderFilter("all");
+        setStartDate(undefined);
+        setEndDate(undefined);
       }
     };
     loadSummary();
