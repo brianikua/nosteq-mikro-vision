@@ -1,13 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar } from "lucide-react";
+import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { format } from "date-fns";
+import { format, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface Device {
   id: string;
@@ -51,7 +54,58 @@ export const IPReputationTab = () => {
   const [summary, setSummary] = useState<ReputationSummary | null>(null);
   const [lastResults, setLastResults] = useState<ScanResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [history, setHistory] = useState<GroupedHistory[]>([]);
+  const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
+  
+  // Filter states
+  const [providerFilter, setProviderFilter] = useState<string>("all");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+
+  // Get unique providers from history
+  const uniqueProviders = useMemo(() => {
+    const providers = new Set(allHistoryEntries.map(e => e.provider));
+    return Array.from(providers).sort();
+  }, [allHistoryEntries]);
+
+  // Filter and group history
+  const filteredHistory = useMemo(() => {
+    let filtered = allHistoryEntries;
+
+    // Apply provider filter
+    if (providerFilter !== "all") {
+      filtered = filtered.filter(e => e.provider === providerFilter);
+    }
+
+    // Apply date range filter
+    if (startDate) {
+      filtered = filtered.filter(e => !isBefore(new Date(e.scanned_at), startOfDay(startDate)));
+    }
+    if (endDate) {
+      filtered = filtered.filter(e => !isAfter(new Date(e.scanned_at), endOfDay(endDate)));
+    }
+
+    // Group by date
+    const grouped = filtered.reduce((acc: Record<string, HistoryEntry[]>, entry) => {
+      const date = format(new Date(entry.scanned_at), "yyyy-MM-dd");
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(entry);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped).map(([date, entries]) => ({
+      date,
+      entries,
+      listedCount: entries.length,
+    }));
+  }, [allHistoryEntries, providerFilter, startDate, endDate]);
+
+  const clearFilters = () => {
+    setProviderFilter("all");
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
+
+  const hasActiveFilters = providerFilter !== "all" || startDate || endDate;
 
   useEffect(() => {
     const load = async () => {
@@ -99,24 +153,14 @@ export const IPReputationTab = () => {
         .eq("device_id", selectedDevice)
         .gt("confidence_score", 0)
         .order("scanned_at", { ascending: false })
-        .limit(200);
+        .limit(500);
 
       if (historyData) {
-        // Group by date
-        const grouped = historyData.reduce((acc: Record<string, HistoryEntry[]>, entry) => {
-          const date = format(new Date(entry.scanned_at), "yyyy-MM-dd");
-          if (!acc[date]) acc[date] = [];
-          acc[date].push(entry);
-          return acc;
-        }, {});
-
-        const groupedArray: GroupedHistory[] = Object.entries(grouped).map(([date, entries]) => ({
-          date,
-          entries,
-          listedCount: entries.length,
-        }));
-
-        setHistory(groupedArray);
+        setAllHistoryEntries(historyData);
+        // Clear filters when device changes
+        setProviderFilter("all");
+        setStartDate(undefined);
+        setEndDate(undefined);
       }
     };
     loadSummary();
@@ -273,19 +317,96 @@ export const IPReputationTab = () => {
       {/* Blacklist History Timeline */}
       <Card className="border-border/50">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <History className="h-5 w-5" /> Blacklisting History Timeline
-          </CardTitle>
-          <CardDescription>
-            Historical record of blacklist detections for this IP address.
-          </CardDescription>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-5 w-5" /> Blacklisting History Timeline
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Historical record of blacklist detections for this IP address.
+                {allHistoryEntries.length > 0 && (
+                  <span className="ml-1">
+                    {filteredHistory.reduce((sum, g) => sum + g.listedCount, 0)} of {allHistoryEntries.length} shown
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            {/* Filters */}
+            {allHistoryEntries.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                {/* Provider filter */}
+                <Select value={providerFilter} onValueChange={setProviderFilter}>
+                  <SelectTrigger className="h-8 w-44 text-xs">
+                    <SelectValue placeholder="All providers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All providers</SelectItem>
+                    {uniqueProviders.map((p) => (
+                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Start date */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("h-8 text-xs gap-1.5", !startDate && "text-muted-foreground")}>
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {startDate ? format(startDate, "MMM d, yyyy") : "From date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      disabled={(date) => endDate ? isAfter(date, endDate) : false}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                {/* End date */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("h-8 text-xs gap-1.5", !endDate && "text-muted-foreground")}>
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {endDate ? format(endDate, "MMM d, yyyy") : "To date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      disabled={(date) => startDate ? isBefore(date, startDate) : false}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                {/* Clear filters */}
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-xs gap-1" onClick={clearFilters}>
+                    <X className="h-3.5 w-3.5" /> Clear
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          {history.length === 0 ? (
+          {allHistoryEntries.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <CheckCircle className="h-12 w-12 mx-auto mb-3 text-[hsl(var(--success))]" />
               <p className="font-medium">No blacklist detections</p>
               <p className="text-sm">This IP has not been found on any blacklists.</p>
+            </div>
+          ) : filteredHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Filter className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">No results match filters</p>
+              <Button variant="link" size="sm" className="mt-1 text-xs" onClick={clearFilters}>Clear filters</Button>
             </div>
           ) : (
             <div className="relative">
@@ -293,7 +414,7 @@ export const IPReputationTab = () => {
               <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
               
               <div className="space-y-6">
-                {history.map((group) => (
+                {filteredHistory.map((group) => (
                   <div key={group.date} className="relative pl-10">
                     {/* Timeline dot */}
                     <div className="absolute left-2.5 top-1 w-3 h-3 rounded-full bg-destructive border-2 border-background" />
