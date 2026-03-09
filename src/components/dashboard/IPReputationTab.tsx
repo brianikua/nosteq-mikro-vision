@@ -54,7 +54,6 @@ export const IPReputationTab = () => {
   const [summary, setSummary] = useState<ReputationSummary | null>(null);
   const [lastResults, setLastResults] = useState<ScanResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [history, setHistory] = useState<GroupedHistory[]>([]);
   const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
   
   // Filter states
