@@ -32,7 +32,7 @@ interface AddIPDialogProps {
   onSaved?: () => void;
 }
 
-export const AddIPDialog = ({ open, onOpenChange }: AddIPDialogProps) => {
+export const AddIPDialog = ({ open, onOpenChange, onSaved }: AddIPDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ name: "", ip_address: "" });
   const [ports, setPorts] = useState<number[]>([80, 443]);
