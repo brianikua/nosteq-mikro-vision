@@ -99,13 +99,15 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, ip: MonitoredIP) => {
-    e.stopPropagation();
-    if (!confirm(`Remove ${ip.name} (${ip.ip_address})?`)) return;
+  const [deleteTarget, setDeleteTarget] = useState<MonitoredIP | null>(null);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      const { error } = await supabase.from("devices").delete().eq("id", ip.id);
+      const { error } = await supabase.from("devices").delete().eq("id", deleteTarget.id);
       if (error) throw error;
       toast.success("IP removed");
+      setDeleteTarget(null);
       fetchIPs();
     } catch {
       toast.error("Failed to remove IP");
