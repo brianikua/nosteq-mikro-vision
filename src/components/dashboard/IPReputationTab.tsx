@@ -580,7 +580,7 @@ export const IPReputationTab = () => {
                 </p>
                 {(() => {
                   const ipCounts: Record<string, number> = {};
-                  allHistoryEntries.forEach(e => {
+                  globalHistoryEntries.forEach(e => {
                     ipCounts[e.ip_address] = (ipCounts[e.ip_address] || 0) + 1;
                   });
                   const sorted = Object.entries(ipCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
