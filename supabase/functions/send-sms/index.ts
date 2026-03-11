@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     const senderId = smsConfig.sms_sender_id || "";
     const apiKey = smsConfig.techra_api_key || "";
 
-    // Build query params for Techra API
+    // Build params for Techra API
     const params = new URLSearchParams({
       userid: userId2,
       senderid: senderId,
@@ -85,21 +85,15 @@ Deno.serve(async (req) => {
       msg: message,
     });
 
-    // Send via Techra SMS gateway
-    let res: Response;
-    const cleanUrl = gatewayUrl.replace(/\/+$/, ""); // remove trailing slash
-    if (smsConfig.webhook_method === "GET") {
-      const fullUrl = `${cleanUrl}?${params.toString()}`;
-      console.log(`SMS GET: ${cleanUrl}?userid=***&senderid=${senderId}&mobile=${phone_number}`);
-      res = await fetch(fullUrl);
-    } else {
-      console.log(`SMS POST: ${cleanUrl}`);
-      res = await fetch(cleanUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params.toString(),
-      });
-    }
+    // Send via Techra SMS gateway (POST with form-encoded body)
+    const cleanUrl = gatewayUrl.replace(/\/+$/, "");
+    console.log(`SMS POST to: ${cleanUrl} | senderid=${senderId} | mobile=${phone_number}`);
+
+    const res = await fetch(cleanUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
 
     const success = res.ok;
     const responseText = await res.text().catch(() => "");
