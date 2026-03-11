@@ -126,6 +126,12 @@ export const IPReputationTab = () => {
   const [reputationTrend, setReputationTrend] = useState<ReputationPoint[]>([]);
   const [trendRange, setTrendRange] = useState<TrendRange>("30d");
 
+  // Auto-refresh state
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0);
+  const [countdown, setCountdown] = useState(0);
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Filter states
   const [providerFilter, setProviderFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
