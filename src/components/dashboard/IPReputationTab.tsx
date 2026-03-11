@@ -294,8 +294,21 @@ export const IPReputationTab = () => {
           setLastResults(r.details);
         }
 
-        // Refresh trend chart
+        // Refresh trend chart + history for analytics
         await loadTrend(selectedDevice, trendRange);
+
+        // Reload blacklist history so analytics auto-update
+        const { data: historyData } = await supabase
+          .from("blacklist_scans")
+          .select("id, provider, ip_address, scanned_at, confidence_score")
+          .eq("device_id", selectedDevice)
+          .gt("confidence_score", 0)
+          .order("scanned_at", { ascending: false })
+          .limit(500);
+
+        if (historyData) {
+          setAllHistoryEntries(historyData);
+        }
       }
     } catch (e) {
       console.error("Scan failed:", e);
