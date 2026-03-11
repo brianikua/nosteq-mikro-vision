@@ -73,7 +73,6 @@ Deno.serve(async (req) => {
     const success = telegramData.ok === true;
 
     // Log notification
-    const supabase = createClient(supabaseUrl, serviceKey);
     await supabase.from("notification_log").insert({
       event_type: event_type || "test",
       ip_address: ip_address || "N/A",
