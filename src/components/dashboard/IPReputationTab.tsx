@@ -305,6 +305,38 @@ export const IPReputationTab = () => {
     }
   };
 
+  // ── Auto-refresh logic ──
+  useEffect(() => {
+    // Clear previous timers
+    if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+
+    if (autoRefreshInterval > 0 && selectedDevice) {
+      setCountdown(autoRefreshInterval);
+      
+      countdownRef.current = setInterval(() => {
+        setCountdown((prev) => (prev <= 1 ? autoRefreshInterval : prev - 1));
+      }, 1000);
+
+      autoRefreshRef.current = setInterval(() => {
+        handleScan();
+        setCountdown(autoRefreshInterval);
+      }, autoRefreshInterval * 1000);
+    } else {
+      setCountdown(0);
+    }
+
+    return () => {
+      if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [autoRefreshInterval, selectedDevice]);
+
+  const formatCountdown = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
