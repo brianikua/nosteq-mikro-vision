@@ -11,8 +11,10 @@ import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab"
 import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
 import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
 import { toast } from "sonner";
+import { useAutoLogout } from "@/hooks/use-auto-logout";
 
 const Dashboard = () => {
+  useAutoLogout();
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(false);
