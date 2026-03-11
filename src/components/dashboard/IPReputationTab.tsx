@@ -123,6 +123,7 @@ export const IPReputationTab = () => {
   const [lastResults, setLastResults] = useState<ScanResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [globalHistoryEntries, setGlobalHistoryEntries] = useState<HistoryEntry[]>([]);
   const [reputationTrend, setReputationTrend] = useState<ReputationPoint[]>([]);
   const [trendRange, setTrendRange] = useState<TrendRange>("30d");
 
@@ -183,6 +184,16 @@ export const IPReputationTab = () => {
 
   const hasActiveFilters = providerFilter !== "all" || startDate || endDate;
 
+  const loadGlobalHistory = useCallback(async () => {
+    const { data } = await supabase
+      .from("blacklist_scans")
+      .select("id, provider, ip_address, scanned_at, confidence_score")
+      .gt("confidence_score", 0)
+      .order("scanned_at", { ascending: false })
+      .limit(1000);
+    if (data) setGlobalHistoryEntries(data);
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.from("devices").select("id, name, ip_address").order("name");
@@ -193,6 +204,7 @@ export const IPReputationTab = () => {
       setLoading(false);
     };
     load();
+    loadGlobalHistory();
   }, []);
 
   useEffect(() => {
@@ -309,6 +321,9 @@ export const IPReputationTab = () => {
         if (historyData) {
           setAllHistoryEntries(historyData);
         }
+
+        // Reload global history for cross-IP analytics
+        await loadGlobalHistory();
       }
     } catch (e) {
       console.error("Scan failed:", e);
@@ -554,9 +569,10 @@ export const IPReputationTab = () => {
             </div>
           )}
 
-          {/* Blacklist Analytics: Most blocked IP + Top blocking providers */}
-          {allHistoryEntries.length > 0 && (
+          {/* Blacklist Analytics: Most blocked IP + Top blocking providers (ALL IPs) */}
+          {globalHistoryEntries.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border/50">
+              <p className="col-span-full text-[10px] text-muted-foreground uppercase tracking-wider">Across all monitored IPs</p>
               {/* Most Blacklisted IPs */}
               <div className="space-y-2">
                 <p className="text-xs font-medium flex items-center gap-1.5 text-destructive">
@@ -564,7 +580,7 @@ export const IPReputationTab = () => {
                 </p>
                 {(() => {
                   const ipCounts: Record<string, number> = {};
-                  allHistoryEntries.forEach(e => {
+                  globalHistoryEntries.forEach(e => {
                     ipCounts[e.ip_address] = (ipCounts[e.ip_address] || 0) + 1;
                   });
                   const sorted = Object.entries(ipCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -593,7 +609,7 @@ export const IPReputationTab = () => {
                 </p>
                 {(() => {
                   const provCounts: Record<string, number> = {};
-                  allHistoryEntries.forEach(e => {
+                  globalHistoryEntries.forEach(e => {
                     provCounts[e.provider] = (provCounts[e.provider] || 0) + 1;
                   });
                   const sorted = Object.entries(provCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
