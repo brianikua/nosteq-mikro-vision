@@ -569,9 +569,10 @@ export const IPReputationTab = () => {
             </div>
           )}
 
-          {/* Blacklist Analytics: Most blocked IP + Top blocking providers */}
-          {allHistoryEntries.length > 0 && (
+          {/* Blacklist Analytics: Most blocked IP + Top blocking providers (ALL IPs) */}
+          {globalHistoryEntries.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border/50">
+              <p className="col-span-full text-[10px] text-muted-foreground uppercase tracking-wider">Across all monitored IPs</p>
               {/* Most Blacklisted IPs */}
               <div className="space-y-2">
                 <p className="text-xs font-medium flex items-center gap-1.5 text-destructive">
