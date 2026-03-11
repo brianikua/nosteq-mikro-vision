@@ -6,19 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Send, MessageSquare, Phone } from "lucide-react";
+import { Loader2, Send, MessageSquare, Phone, Key } from "lucide-react";
 import { toast } from "sonner";
 
 export const SmsSettingsTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testNumber, setTestNumber] = useState("");
   const [config, setConfig] = useState({
     id: null as string | null,
     webhook_url: "",
     webhook_method: "POST",
     client_number: "",
+    sms_user_id: "",
+    sms_sender_id: "",
+    techra_api_key: "",
     isp_contact_name: "",
     isp_contact_number: "",
     enabled: true,
@@ -44,6 +47,9 @@ export const SmsSettingsTab = () => {
           webhook_url: data.webhook_url,
           webhook_method: data.webhook_method ?? "POST",
           client_number: data.client_number,
+          sms_user_id: (data as any).sms_user_id ?? "",
+          sms_sender_id: (data as any).sms_sender_id ?? "",
+          techra_api_key: (data as any).techra_api_key ?? "",
           isp_contact_name: data.isp_contact_name ?? "",
           isp_contact_number: data.isp_contact_number ?? "",
           enabled: data.enabled ?? true,
@@ -62,11 +68,23 @@ export const SmsSettingsTab = () => {
 
   const handleSave = async () => {
     if (!config.webhook_url.trim()) {
-      toast.error("Webhook URL is required");
+      toast.error("SMS Gateway URL is required");
+      return;
+    }
+    if (!config.sms_user_id.trim()) {
+      toast.error("SMS User ID is required");
+      return;
+    }
+    if (!config.sms_sender_id.trim()) {
+      toast.error("SMS Sender ID is required");
+      return;
+    }
+    if (!config.techra_api_key.trim()) {
+      toast.error("Techra API Key is required");
       return;
     }
     if (!config.client_number.trim()) {
-      toast.error("Client phone number is required");
+      toast.error("Default phone number is required");
       return;
     }
     setSaving(true);
@@ -75,6 +93,9 @@ export const SmsSettingsTab = () => {
         webhook_url: config.webhook_url.trim(),
         webhook_method: config.webhook_method,
         client_number: config.client_number.trim(),
+        sms_user_id: config.sms_user_id.trim(),
+        sms_sender_id: config.sms_sender_id.trim(),
+        techra_api_key: config.techra_api_key.trim(),
         isp_contact_name: config.isp_contact_name.trim() || null,
         isp_contact_number: config.isp_contact_number.trim() || null,
         enabled: config.enabled,
@@ -112,8 +133,13 @@ export const SmsSettingsTab = () => {
   };
 
   const handleTest = async () => {
-    if (!config.webhook_url.trim() || !config.client_number.trim()) {
-      toast.error("Save your webhook URL and phone number first");
+    const numberToTest = testNumber.trim() || config.client_number.trim();
+    if (!numberToTest) {
+      toast.error("Enter a phone number to test");
+      return;
+    }
+    if (!config.webhook_url.trim()) {
+      toast.error("Save your SMS gateway settings first");
       return;
     }
     setTesting(true);
@@ -121,12 +147,12 @@ export const SmsSettingsTab = () => {
       const { data, error } = await supabase.functions.invoke("send-sms", {
         body: {
           message: "🧪 Test SMS from Nosteq IP Monitor — notifications are working!",
-          phone_number: config.client_number.trim(),
+          phone_number: numberToTest,
         },
       });
       if (error) throw error;
       if (data?.success) {
-        toast.success("Test SMS sent!");
+        toast.success(`Test SMS sent to ${numberToTest}!`);
       } else {
         toast.error(data?.error || "Failed to send test SMS");
       }
@@ -148,56 +174,76 @@ export const SmsSettingsTab = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Webhook & Phone Setup */}
+      {/* SMS Gateway Setup */}
       <Card className="border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" /> SMS Webhook Setup
+            <MessageSquare className="h-5 w-5" /> SMS Gateway Setup
           </CardTitle>
           <CardDescription>
-            Configure a generic HTTP webhook to send SMS alerts. Works with any SMS gateway API.
+            Configure your Techra SMS gateway credentials for sending SMS alerts.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="webhook_url">Webhook URL</Label>
+            <Label htmlFor="webhook_url">SMS Gateway URL</Label>
             <Input
               id="webhook_url"
-              placeholder="https://api.sms-provider.com/send"
+              placeholder="https://api.techra.co.za/v1/sms/send"
               value={config.webhook_url}
               onChange={(e) => setConfig({ ...config, webhook_url: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              The URL that receives SMS requests. The body will include <code className="bg-muted px-1 rounded">phone_number</code> and <code className="bg-muted px-1 rounded">message</code> fields.
+              The Techra SMS API endpoint URL.
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label>HTTP Method</Label>
-            <Select
-              value={config.webhook_method}
-              onValueChange={(v) => setConfig({ ...config, webhook_method: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="POST">POST</SelectItem>
-                <SelectItem value="GET">GET (query params)</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="sms_user_id">SMS User ID</Label>
+            <Input
+              id="sms_user_id"
+              placeholder="Your Techra user ID"
+              value={config.sms_user_id}
+              onChange={(e) => setConfig({ ...config, sms_user_id: e.target.value })}
+            />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="client_number">Your Phone Number</Label>
+            <Label htmlFor="sms_sender_id">SMS Sender ID</Label>
+            <Input
+              id="sms_sender_id"
+              placeholder="NOSTEQ"
+              value={config.sms_sender_id}
+              onChange={(e) => setConfig({ ...config, sms_sender_id: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              The sender name/number that appears on the SMS (e.g. NOSTEQ, your brand).
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="techra_api_key" className="flex items-center gap-1">
+              <Key className="h-3 w-3" /> Techra API Key
+            </Label>
+            <Input
+              id="techra_api_key"
+              type="password"
+              placeholder="Your Techra API key"
+              value={config.techra_api_key}
+              onChange={(e) => setConfig({ ...config, techra_api_key: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="client_number">Default Phone Number</Label>
             <Input
               id="client_number"
-              placeholder="+1234567890"
+              placeholder="+27123456789"
               value={config.client_number}
               onChange={(e) => setConfig({ ...config, client_number: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              The number that will receive SMS alerts when an IP goes down or comes back up.
+              Default number that will receive SMS alerts.
             </p>
           </div>
 
@@ -206,20 +252,44 @@ export const SmsSettingsTab = () => {
             <Switch checked={config.enabled} onCheckedChange={(v) => setConfig({ ...config, enabled: v })} />
           </div>
 
-          <div className="flex gap-2 pt-2">
-            <Button onClick={handleSave} disabled={saving} className="flex-1">
-              {saving ? "Saving..." : "Save Settings"}
-            </Button>
-            <Button variant="outline" onClick={handleTest} disabled={testing}>
-              <Send className="h-4 w-4 mr-2" />
-              {testing ? "Sending..." : "Test"}
-            </Button>
-          </div>
+          <Button onClick={handleSave} disabled={saving} className="w-full">
+            {saving ? "Saving..." : "Save Settings"}
+          </Button>
         </CardContent>
       </Card>
 
-      {/* ISP Provider + Events */}
+      {/* Test SMS + ISP + Events */}
       <div className="space-y-6">
+        {/* Test SMS Card */}
+        <Card className="border-border/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5" /> Test SMS Notification
+            </CardTitle>
+            <CardDescription>
+              Enter a phone number and send a test SMS to verify your gateway is working.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="test_number">Phone Number</Label>
+              <Input
+                id="test_number"
+                placeholder="+27123456789"
+                value={testNumber}
+                onChange={(e) => setTestNumber(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty to use the default number above.
+              </p>
+            </div>
+            <Button variant="outline" onClick={handleTest} disabled={testing} className="w-full">
+              <Send className="h-4 w-4 mr-2" />
+              {testing ? "Sending..." : "Send Test SMS"}
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -247,9 +317,6 @@ export const SmsSettingsTab = () => {
                 value={config.isp_contact_number}
                 onChange={(e) => setConfig({ ...config, isp_contact_number: e.target.value })}
               />
-              <p className="text-xs text-muted-foreground">
-                This number will be shown in alerts so you can quickly contact your ISP.
-              </p>
             </div>
           </CardContent>
         </Card>
