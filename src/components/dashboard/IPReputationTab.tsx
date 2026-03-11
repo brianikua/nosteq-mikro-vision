@@ -544,36 +544,94 @@ export const IPReputationTab = () => {
       </Card>
 
       {lastResults.length > 0 && (
-
         <Card className="border-border/50">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Shield className="h-5 w-5" /> Scan Results
             </CardTitle>
+            <CardDescription>
+              {lastResults.filter(r => r.listed).length > 0
+                ? `${lastResults.filter(r => r.listed).length} of ${lastResults.length} providers flagged your IP — expand listed items for details`
+                : `All ${lastResults.length} providers report clean`}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              {lastResults.map((r, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center justify-between px-3 py-2 rounded-md text-sm ${
-                    r.listed ? "bg-destructive/10 border border-destructive/20" : "bg-card border border-border/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {r.listed ? (
-                      <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                    ) : (
-                      <CheckCircle className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
-                    )}
-                    <span className="truncate">{r.provider}</span>
-                  </div>
-                  <Badge variant={r.listed ? "destructive" : "secondary"} className="text-xs">
-                    {r.listed ? "Listed" : "Clean"}
-                  </Badge>
+          <CardContent className="space-y-2">
+            {/* Listed providers first with expandable insights */}
+            {lastResults.filter(r => r.listed).length > 0 && (
+              <div className="space-y-1 mb-4">
+                <p className="text-xs font-medium text-destructive mb-2 flex items-center gap-1.5">
+                  <Flame className="h-3.5 w-3.5" /> Listed — tap for reason & firewall fix
+                </p>
+                <Accordion type="multiple" className="w-full">
+                  {lastResults.filter(r => r.listed).map((r, i) => {
+                    const insight = getProviderInsight(r.provider);
+                    return (
+                      <AccordionItem key={`listed-${i}`} value={`listed-${i}`} className="border-destructive/20">
+                        <AccordionTrigger className="py-2 px-3 rounded-md bg-destructive/10 border border-destructive/20 hover:no-underline">
+                          <div className="flex items-center gap-2 text-sm">
+                            <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                            <span className="truncate">{r.provider}</span>
+                            <Badge variant="destructive" className="text-xs ml-auto mr-2">Listed</Badge>
+                            <Badge variant="outline" className="text-xs">{insight.category}</Badge>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-3 pt-3">
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs font-medium text-destructive flex items-center gap-1.5 mb-1">
+                                <Info className="h-3.5 w-3.5" /> Why you're listed
+                              </p>
+                              <p className="text-sm text-muted-foreground">{insight.reason}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-primary flex items-center gap-1.5 mb-1">
+                                <ShieldAlert className="h-3.5 w-3.5" /> Recommended Firewall Action
+                              </p>
+                              <p className="text-sm text-muted-foreground">{insight.firewall}</p>
+                            </div>
+                            {r.confidence > 0 && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Confidence:</span>
+                                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-32">
+                                  <div
+                                    className="h-full bg-destructive rounded-full transition-all"
+                                    style={{ width: `${Math.min(r.confidence, 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-mono text-muted-foreground">{r.confidence}%</span>
+                              </div>
+                            )}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              </div>
+            )}
+
+            {/* Clean providers grid */}
+            {lastResults.filter(r => !r.listed).length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-[hsl(var(--success))] mb-2 flex items-center gap-1.5">
+                  <CheckCircle className="h-3.5 w-3.5" /> Clean ({lastResults.filter(r => !r.listed).length})
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                  {lastResults.filter(r => !r.listed).map((r, i) => (
+                    <div
+                      key={`clean-${i}`}
+                      className="flex items-center justify-between px-3 py-1.5 rounded-md text-sm bg-card border border-border/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" />
+                        <span className="truncate text-xs">{r.provider}</span>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px]">Clean</Badge>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
