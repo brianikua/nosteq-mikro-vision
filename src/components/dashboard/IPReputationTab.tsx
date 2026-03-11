@@ -1,10 +1,10 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, TrendingUp } from "lucide-react";
+import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, TrendingUp, RefreshCw, Info, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format, isAfter, isBefore, startOfDay, endOfDay, subHours, subDays } from "date-fns";
@@ -14,7 +14,63 @@ import { cn } from "@/lib/utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
+import { Switch } from "@/components/ui/switch";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
+// ── Provider insight database ──
+const PROVIDER_INSIGHTS: Record<string, { reason: string; firewall: string; category: string }> = {
+  "Spamhaus ZEN": { reason: "Your IP was detected sending spam, hosting malware, or part of a botnet. ZEN is a combined list (SBL+XBL+PBL).", firewall: "Block outbound SMTP (port 25) for all subscribers. Use connection rate limiting.", category: "spam/malware" },
+  "Spamhaus SBL": { reason: "Direct spam source or spam operation detected from your IP range.", firewall: "Block port 25 outbound, investigate which subscriber is sending bulk email.", category: "spam" },
+  "Spamhaus XBL": { reason: "Exploited system (virus/trojan/botnet) detected sending spam from your network.", firewall: "Rate-limit outbound connections per subscriber. Block port 25. Scan for compromised hosts.", category: "botnet/exploit" },
+  "Spamhaus PBL": { reason: "Your IP is in a dynamic/residential range that should not send email directly.", firewall: "No firewall fix needed — configure mail to relay through an authorized SMTP server with proper rDNS.", category: "policy" },
+  "Barracuda": { reason: "Spam or malicious email traffic detected from your IP.", firewall: "Block outbound SMTP (port 25). Set up SPF/DKIM/DMARC records.", category: "spam" },
+  "SpamCop": { reason: "Users reported receiving spam from your IP address.", firewall: "Block port 25 for non-mail-server subscribers. Monitor abuse complaints.", category: "spam" },
+  "SORBS Combined": { reason: "Detected as open relay, open proxy, or spam source.", firewall: "Block open relay ports (25, 587). Ensure no open proxies on ports 1080, 3128, 8080.", category: "spam/proxy" },
+  "SORBS Spam": { reason: "Active spam sending detected from your IP.", firewall: "Block port 25 outbound for all non-authorized hosts.", category: "spam" },
+  "SORBS New Spam": { reason: "Recently started sending spam from your IP.", firewall: "Immediately block port 25 and investigate the source subscriber.", category: "spam" },
+  "SORBS Recent Spam": { reason: "Spam activity detected in the recent past.", firewall: "Block port 25 and submit delisting request after resolving.", category: "spam" },
+  "UCEProtect L1": { reason: "Individual IP detected sending spam or malicious traffic.", firewall: "Block port 25, rate-limit connections, investigate source.", category: "spam" },
+  "UCEProtect L2": { reason: "Multiple IPs in your /24 subnet are listed — network-wide abuse detected.", firewall: "Apply subnet-wide SMTP blocking and aggressive rate limiting. Contact upstream.", category: "network abuse" },
+  "UCEProtect L3": { reason: "Your entire ASN/provider range has abuse issues.", firewall: "Implement BCP38, block port 25 network-wide, enable uRPF.", category: "network abuse" },
+  "CBL (Abuseat)": { reason: "Botnet or virus activity detected — your IP is sending spam via compromised device.", firewall: "Block port 25, rate-limit new connections (100/min per subscriber), detect port scanning.", category: "botnet" },
+  "PSBL": { reason: "Passive spam block — your IP sent email to a spamtrap.", firewall: "Block port 25 for residential/dynamic IPs.", category: "spam" },
+  "DroneBL": { reason: "Open proxy, botnet drone, or IRC abuse detected from your IP.", firewall: "Block proxy ports (1080, 3128, 8080), rate-limit IRC (6667), block port 25.", category: "botnet/proxy" },
+  "WPBL": { reason: "Your IP sent unsolicited email to a monitored address.", firewall: "Block outbound SMTP for non-mail hosts.", category: "spam" },
+  "Mailspike": { reason: "Poor email sending reputation based on behavior analysis.", firewall: "Ensure proper rDNS, SPF, DKIM. Block port 25 for non-mail hosts.", category: "reputation" },
+  "NiX Spam": { reason: "German spam blacklist — detected spam from your IP.", firewall: "Block outbound SMTP, ensure proper email authentication.", category: "spam" },
+  "TruncateGBUDB": { reason: "Poor sender reputation based on email pattern analysis.", firewall: "Block port 25, implement rate limiting on email connections.", category: "reputation" },
+  "abuse.ch Spam": { reason: "Malware or spam distribution detected by abuse.ch.", firewall: "Block known C&C ports, rate-limit connections, block port 25.", category: "malware" },
+  "InterServer": { reason: "Spam or abuse detected from your IP.", firewall: "Block port 25, rate-limit outbound connections.", category: "spam" },
+  "0spam": { reason: "Automated spam detection flagged your IP.", firewall: "Block outbound SMTP for non-authorized hosts.", category: "spam" },
+  "s5h.net": { reason: "Detected as spam source or open relay.", firewall: "Block port 25, close open relays.", category: "spam" },
+  "INPS": { reason: "Spam or abuse detected from your IP.", firewall: "Block port 25, investigate source.", category: "spam" },
+  "Blocklist.de DNSBL": { reason: "Brute-force attacks, DDoS, or spam detected from your IP.", firewall: "Rate-limit SSH/FTP (max 5 attempts/min). Block port 25. Enable port scan detection.", category: "brute force" },
+  "Blocklist.de": { reason: "Attack traffic (brute-force, DDoS, spam) reported from your IP.", firewall: "Rate-limit connections, block common attack ports, enable PSD (Port Scan Detection).", category: "brute force" },
+  "DNSRBL": { reason: "General blacklist detection — spam or abuse.", firewall: "Block port 25, apply standard anti-abuse firewall rules.", category: "spam" },
+  "HostKarma": { reason: "Poor sending reputation or suspicious traffic patterns.", firewall: "Block port 25, ensure rDNS is configured, implement rate limiting.", category: "reputation" },
+  "UBL Unsubscore": { reason: "High unsubscribe rate detected — likely sending unwanted email.", firewall: "Block port 25 for non-mail hosts. Review mail server configuration.", category: "spam" },
+  "AbuseIPDB": { reason: "Multiple abuse reports filed against your IP (brute-force, DDoS, scanning, spam).", firewall: "Rate-limit connections (100/min), enable port scan detection, block port 25, drop bogon traffic.", category: "general abuse" },
+  "VirusTotal": { reason: "Multiple security vendors flagged your IP for malware, phishing, or malicious activity.", firewall: "Block known malware ports, rate-limit connections, implement DNS filtering.", category: "malware" },
+  "IPQualityScore": { reason: "High fraud score — detected as proxy, VPN, tor exit, or bot traffic source.", firewall: "Block proxy ports (1080, 3128, 8080), block tor exit traffic, rate-limit connections.", category: "proxy/fraud" },
+  "IP-API (Proxy/Hosting)": { reason: "Your IP is flagged as a hosting/proxy IP — may affect email deliverability.", firewall: "Ensure proper rDNS. This is informational — hosting IPs are often flagged but not necessarily abusive.", category: "informational" },
+};
+
+const getProviderInsight = (provider: string) => {
+  return PROVIDER_INSIGHTS[provider] || {
+    reason: "This provider detected suspicious or abusive activity from your IP address.",
+    firewall: "Block outbound SMTP (port 25), rate-limit connections, and review firewall rules.",
+    category: "unknown",
+  };
+};
+
+// Auto-refresh intervals
+const AUTO_REFRESH_OPTIONS = [
+  { label: "Off", value: 0 },
+  { label: "5 min", value: 5 * 60 },
+  { label: "15 min", value: 15 * 60 },
+  { label: "30 min", value: 30 * 60 },
+  { label: "1 hour", value: 60 * 60 },
+];
 
 interface Device {
   id: string;
