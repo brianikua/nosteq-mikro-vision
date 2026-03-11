@@ -34,6 +34,7 @@ export const TelegramSettingsTab = () => {
       if (data) {
         setConfig({
           id: data.id,
+          bot_token: (data as any).bot_token || "",
           chat_id: data.chat_id,
           enabled: data.enabled ?? true,
           notify_down: data.notify_down ?? true,
