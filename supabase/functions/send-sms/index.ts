@@ -76,17 +76,29 @@ Deno.serve(async (req) => {
     const senderId = smsConfig.sms_sender_id || "";
     const apiKey = smsConfig.techra_api_key || "";
 
-    // Send via Techra SMS gateway - use GET with query params
-    const url = new URL(gatewayUrl);
-    url.searchParams.set("userid", userId2);
-    url.searchParams.set("senderid", senderId);
-    url.searchParams.set("apiKey", apiKey);
-    url.searchParams.set("mobile", phone_number);
-    url.searchParams.set("msg", message);
+    // Build query params for Techra API
+    const params = new URLSearchParams({
+      userid: userId2,
+      senderid: senderId,
+      apiKey: apiKey,
+      mobile: phone_number,
+      msg: message,
+    });
 
-    console.log(`SMS gateway request URL: ${url.toString()}`);
-
-    const res = await fetch(url.toString(), { method: "GET" });
+    // Send via Techra SMS gateway
+    let res: Response;
+    if (smsConfig.webhook_method === "GET") {
+      const fullUrl = `${gatewayUrl}?${params.toString()}`;
+      console.log(`SMS gateway GET: ${gatewayUrl}?userid=***&senderid=${senderId}&mobile=${phone_number}`);
+      res = await fetch(fullUrl, { method: "GET" });
+    } else {
+      console.log(`SMS gateway POST: ${gatewayUrl} with userid=${userId2}&senderid=${senderId}&mobile=${phone_number}`);
+      res = await fetch(gatewayUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      });
+    }
 
     const success = res.ok;
     const responseText = await res.text().catch(() => "");
