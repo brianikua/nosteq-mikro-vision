@@ -321,6 +321,9 @@ export const IPReputationTab = () => {
         if (historyData) {
           setAllHistoryEntries(historyData);
         }
+
+        // Reload global history for cross-IP analytics
+        await loadGlobalHistory();
       }
     } catch (e) {
       console.error("Scan failed:", e);
