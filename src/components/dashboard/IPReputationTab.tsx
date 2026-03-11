@@ -442,7 +442,7 @@ export const IPReputationTab = () => {
         </Card>
       </div>
 
-      {/* Reputation Trend Chart */}
+      {/* Reputation Trend Chart + Analytics */}
       <Card className="border-border/50">
         <CardHeader>
         <div className="flex items-center justify-between">
@@ -471,7 +471,7 @@ export const IPReputationTab = () => {
           </div>
         </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {reputationTrend.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[180px] text-muted-foreground gap-2">
               <TrendingUp className="h-10 w-10 opacity-30" />
@@ -537,6 +537,87 @@ export const IPReputationTab = () => {
                   <span className="inline-block w-6 border-t-2 border-dashed border-[hsl(var(--warning))]" />
                   Fair (≥50)
                 </span>
+              </div>
+            </div>
+          )}
+
+          {/* Blacklist Analytics: Most blocked IP + Top blocking providers */}
+          {allHistoryEntries.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border/50">
+              {/* Most Blacklisted IPs */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium flex items-center gap-1.5 text-destructive">
+                  <Flame className="h-3.5 w-3.5" /> Most Blacklisted IPs
+                </p>
+                {(() => {
+                  const ipCounts: Record<string, number> = {};
+                  allHistoryEntries.forEach(e => {
+                    ipCounts[e.ip_address] = (ipCounts[e.ip_address] || 0) + 1;
+                  });
+                  const sorted = Object.entries(ipCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+                  const max = sorted[0]?.[1] || 1;
+                  return sorted.map(([ip, count]) => (
+                    <div key={ip} className="flex items-center gap-2">
+                      <span className="text-xs font-mono w-32 truncate">{ip}</span>
+                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-destructive rounded-full transition-all"
+                          style={{ width: `${(count / max) * 100}%` }}
+                        />
+                      </div>
+                      <Badge variant="destructive" className="text-[10px] min-w-[2.5rem] justify-center">
+                        {count}
+                      </Badge>
+                    </div>
+                  ));
+                })()}
+              </div>
+
+              {/* Top Blocking Providers */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium flex items-center gap-1.5 text-[hsl(var(--warning))]">
+                  <ShieldAlert className="h-3.5 w-3.5" /> Top Blocking Providers
+                </p>
+                {(() => {
+                  const provCounts: Record<string, number> = {};
+                  allHistoryEntries.forEach(e => {
+                    provCounts[e.provider] = (provCounts[e.provider] || 0) + 1;
+                  });
+                  const sorted = Object.entries(provCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+                  const max = sorted[0]?.[1] || 1;
+                  return sorted.map(([provider, count]) => {
+                    const insight = getProviderInsight(provider);
+                    return (
+                      <HoverCard key={provider}>
+                        <HoverCardTrigger asChild>
+                          <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors">
+                            <span className="text-xs truncate w-32">{provider}</span>
+                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[hsl(var(--warning))] rounded-full transition-all"
+                                style={{ width: `${(count / max) * 100}%` }}
+                              />
+                            </div>
+                            <Badge variant="outline" className="text-[10px] min-w-[2.5rem] justify-center">
+                              {count}
+                            </Badge>
+                          </div>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-72 text-xs space-y-2">
+                          <p className="font-medium">{provider}</p>
+                          <p className="text-muted-foreground">{insight.reason}</p>
+                          <div className="pt-1 border-t border-border/50">
+                            <p className="font-medium text-primary flex items-center gap-1">
+                              <ShieldAlert className="h-3 w-3" /> Fix
+                            </p>
+                            <p className="text-muted-foreground">{insight.firewall}</p>
+                          </div>
+                          <Badge variant="secondary" className="text-[10px]">{insight.category}</Badge>
+                        </HoverCardContent>
+                      </HoverCard>
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}
