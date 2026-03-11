@@ -356,7 +356,7 @@ export const IPReputationTab = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <Select value={selectedDevice} onValueChange={setSelectedDevice}>
           <SelectTrigger className="w-64">
             <SelectValue placeholder="Select IP" />
@@ -376,6 +376,28 @@ export const IPReputationTab = () => {
             <><Search className="h-4 w-4 mr-2" /> Run Blacklist Scan</>
           )}
         </Button>
+
+        {/* Auto-refresh controls */}
+        <div className="flex items-center gap-2 ml-auto">
+          <RefreshCw className={cn("h-4 w-4 text-muted-foreground", autoRefreshInterval > 0 && "text-primary animate-spin")} style={autoRefreshInterval > 0 ? { animationDuration: "3s" } : {}} />
+          <Select value={String(autoRefreshInterval)} onValueChange={(v) => setAutoRefreshInterval(Number(v))}>
+            <SelectTrigger className="h-8 w-28 text-xs">
+              <SelectValue placeholder="Auto refresh" />
+            </SelectTrigger>
+            <SelectContent>
+              {AUTO_REFRESH_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={String(opt.value)}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {autoRefreshInterval > 0 && countdown > 0 && (
+            <Badge variant="outline" className="text-xs font-mono">
+              {formatCountdown(countdown)}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
