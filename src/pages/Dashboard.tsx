@@ -16,7 +16,6 @@ import { useAutoLogout } from "@/hooks/use-auto-logout";
 const Dashboard = () => {
   useAutoLogout();
   const navigate = useNavigate();
-  const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
