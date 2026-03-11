@@ -80,22 +80,22 @@ Deno.serve(async (req) => {
     let res: Response;
     if (smsConfig.webhook_method === "GET") {
       const url = new URL(gatewayUrl);
-      url.searchParams.set("user_id", userId2);
-      url.searchParams.set("sender_id", senderId);
-      url.searchParams.set("api_key", apiKey);
-      url.searchParams.set("phone_number", phone_number);
-      url.searchParams.set("message", message);
+      url.searchParams.set("userid", userId2);
+      url.searchParams.set("senderid", senderId);
+      url.searchParams.set("apiKey", apiKey);
+      url.searchParams.set("mobile", phone_number);
+      url.searchParams.set("msg", message);
       res = await fetch(url.toString());
     } else {
       res = await fetch(gatewayUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: userId2,
-          sender_id: senderId,
-          api_key: apiKey,
-          phone_number,
-          message,
+          userid: userId2,
+          senderid: senderId,
+          apiKey: apiKey,
+          mobile: phone_number,
+          msg: message,
         }),
       });
     }
