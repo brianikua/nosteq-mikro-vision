@@ -87,13 +87,14 @@ Deno.serve(async (req) => {
 
     // Send via Techra SMS gateway
     let res: Response;
+    const cleanUrl = gatewayUrl.replace(/\/+$/, ""); // remove trailing slash
     if (smsConfig.webhook_method === "GET") {
-      const fullUrl = `${gatewayUrl}?${params.toString()}`;
-      console.log(`SMS gateway GET: ${gatewayUrl}?userid=***&senderid=${senderId}&mobile=${phone_number}`);
-      res = await fetch(fullUrl, { method: "GET" });
+      const fullUrl = `${cleanUrl}?${params.toString()}`;
+      console.log(`SMS GET: ${cleanUrl}?userid=***&senderid=${senderId}&mobile=${phone_number}`);
+      res = await fetch(fullUrl);
     } else {
-      console.log(`SMS gateway POST: ${gatewayUrl} with userid=${userId2}&senderid=${senderId}&mobile=${phone_number}`);
-      res = await fetch(gatewayUrl, {
+      console.log(`SMS POST: ${cleanUrl}`);
+      res = await fetch(cleanUrl, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: params.toString(),
