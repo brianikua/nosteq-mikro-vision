@@ -1,10 +1,10 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, TrendingUp } from "lucide-react";
+import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, TrendingUp, RefreshCw, Info, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format, isAfter, isBefore, startOfDay, endOfDay, subHours, subDays } from "date-fns";
@@ -14,7 +14,63 @@ import { cn } from "@/lib/utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
+import { Switch } from "@/components/ui/switch";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
+// ── Provider insight database ──
+const PROVIDER_INSIGHTS: Record<string, { reason: string; firewall: string; category: string }> = {
+  "Spamhaus ZEN": { reason: "Your IP was detected sending spam, hosting malware, or part of a botnet. ZEN is a combined list (SBL+XBL+PBL).", firewall: "Block outbound SMTP (port 25) for all subscribers. Use connection rate limiting.", category: "spam/malware" },
+  "Spamhaus SBL": { reason: "Direct spam source or spam operation detected from your IP range.", firewall: "Block port 25 outbound, investigate which subscriber is sending bulk email.", category: "spam" },
+  "Spamhaus XBL": { reason: "Exploited system (virus/trojan/botnet) detected sending spam from your network.", firewall: "Rate-limit outbound connections per subscriber. Block port 25. Scan for compromised hosts.", category: "botnet/exploit" },
+  "Spamhaus PBL": { reason: "Your IP is in a dynamic/residential range that should not send email directly.", firewall: "No firewall fix needed — configure mail to relay through an authorized SMTP server with proper rDNS.", category: "policy" },
+  "Barracuda": { reason: "Spam or malicious email traffic detected from your IP.", firewall: "Block outbound SMTP (port 25). Set up SPF/DKIM/DMARC records.", category: "spam" },
+  "SpamCop": { reason: "Users reported receiving spam from your IP address.", firewall: "Block port 25 for non-mail-server subscribers. Monitor abuse complaints.", category: "spam" },
+  "SORBS Combined": { reason: "Detected as open relay, open proxy, or spam source.", firewall: "Block open relay ports (25, 587). Ensure no open proxies on ports 1080, 3128, 8080.", category: "spam/proxy" },
+  "SORBS Spam": { reason: "Active spam sending detected from your IP.", firewall: "Block port 25 outbound for all non-authorized hosts.", category: "spam" },
+  "SORBS New Spam": { reason: "Recently started sending spam from your IP.", firewall: "Immediately block port 25 and investigate the source subscriber.", category: "spam" },
+  "SORBS Recent Spam": { reason: "Spam activity detected in the recent past.", firewall: "Block port 25 and submit delisting request after resolving.", category: "spam" },
+  "UCEProtect L1": { reason: "Individual IP detected sending spam or malicious traffic.", firewall: "Block port 25, rate-limit connections, investigate source.", category: "spam" },
+  "UCEProtect L2": { reason: "Multiple IPs in your /24 subnet are listed — network-wide abuse detected.", firewall: "Apply subnet-wide SMTP blocking and aggressive rate limiting. Contact upstream.", category: "network abuse" },
+  "UCEProtect L3": { reason: "Your entire ASN/provider range has abuse issues.", firewall: "Implement BCP38, block port 25 network-wide, enable uRPF.", category: "network abuse" },
+  "CBL (Abuseat)": { reason: "Botnet or virus activity detected — your IP is sending spam via compromised device.", firewall: "Block port 25, rate-limit new connections (100/min per subscriber), detect port scanning.", category: "botnet" },
+  "PSBL": { reason: "Passive spam block — your IP sent email to a spamtrap.", firewall: "Block port 25 for residential/dynamic IPs.", category: "spam" },
+  "DroneBL": { reason: "Open proxy, botnet drone, or IRC abuse detected from your IP.", firewall: "Block proxy ports (1080, 3128, 8080), rate-limit IRC (6667), block port 25.", category: "botnet/proxy" },
+  "WPBL": { reason: "Your IP sent unsolicited email to a monitored address.", firewall: "Block outbound SMTP for non-mail hosts.", category: "spam" },
+  "Mailspike": { reason: "Poor email sending reputation based on behavior analysis.", firewall: "Ensure proper rDNS, SPF, DKIM. Block port 25 for non-mail hosts.", category: "reputation" },
+  "NiX Spam": { reason: "German spam blacklist — detected spam from your IP.", firewall: "Block outbound SMTP, ensure proper email authentication.", category: "spam" },
+  "TruncateGBUDB": { reason: "Poor sender reputation based on email pattern analysis.", firewall: "Block port 25, implement rate limiting on email connections.", category: "reputation" },
+  "abuse.ch Spam": { reason: "Malware or spam distribution detected by abuse.ch.", firewall: "Block known C&C ports, rate-limit connections, block port 25.", category: "malware" },
+  "InterServer": { reason: "Spam or abuse detected from your IP.", firewall: "Block port 25, rate-limit outbound connections.", category: "spam" },
+  "0spam": { reason: "Automated spam detection flagged your IP.", firewall: "Block outbound SMTP for non-authorized hosts.", category: "spam" },
+  "s5h.net": { reason: "Detected as spam source or open relay.", firewall: "Block port 25, close open relays.", category: "spam" },
+  "INPS": { reason: "Spam or abuse detected from your IP.", firewall: "Block port 25, investigate source.", category: "spam" },
+  "Blocklist.de DNSBL": { reason: "Brute-force attacks, DDoS, or spam detected from your IP.", firewall: "Rate-limit SSH/FTP (max 5 attempts/min). Block port 25. Enable port scan detection.", category: "brute force" },
+  "Blocklist.de": { reason: "Attack traffic (brute-force, DDoS, spam) reported from your IP.", firewall: "Rate-limit connections, block common attack ports, enable PSD (Port Scan Detection).", category: "brute force" },
+  "DNSRBL": { reason: "General blacklist detection — spam or abuse.", firewall: "Block port 25, apply standard anti-abuse firewall rules.", category: "spam" },
+  "HostKarma": { reason: "Poor sending reputation or suspicious traffic patterns.", firewall: "Block port 25, ensure rDNS is configured, implement rate limiting.", category: "reputation" },
+  "UBL Unsubscore": { reason: "High unsubscribe rate detected — likely sending unwanted email.", firewall: "Block port 25 for non-mail hosts. Review mail server configuration.", category: "spam" },
+  "AbuseIPDB": { reason: "Multiple abuse reports filed against your IP (brute-force, DDoS, scanning, spam).", firewall: "Rate-limit connections (100/min), enable port scan detection, block port 25, drop bogon traffic.", category: "general abuse" },
+  "VirusTotal": { reason: "Multiple security vendors flagged your IP for malware, phishing, or malicious activity.", firewall: "Block known malware ports, rate-limit connections, implement DNS filtering.", category: "malware" },
+  "IPQualityScore": { reason: "High fraud score — detected as proxy, VPN, tor exit, or bot traffic source.", firewall: "Block proxy ports (1080, 3128, 8080), block tor exit traffic, rate-limit connections.", category: "proxy/fraud" },
+  "IP-API (Proxy/Hosting)": { reason: "Your IP is flagged as a hosting/proxy IP — may affect email deliverability.", firewall: "Ensure proper rDNS. This is informational — hosting IPs are often flagged but not necessarily abusive.", category: "informational" },
+};
+
+const getProviderInsight = (provider: string) => {
+  return PROVIDER_INSIGHTS[provider] || {
+    reason: "This provider detected suspicious or abusive activity from your IP address.",
+    firewall: "Block outbound SMTP (port 25), rate-limit connections, and review firewall rules.",
+    category: "unknown",
+  };
+};
+
+// Auto-refresh intervals
+const AUTO_REFRESH_OPTIONS = [
+  { label: "Off", value: 0 },
+  { label: "5 min", value: 5 * 60 },
+  { label: "15 min", value: 15 * 60 },
+  { label: "30 min", value: 30 * 60 },
+  { label: "1 hour", value: 60 * 60 },
+];
 
 interface Device {
   id: string;
@@ -69,6 +125,12 @@ export const IPReputationTab = () => {
   const [allHistoryEntries, setAllHistoryEntries] = useState<HistoryEntry[]>([]);
   const [reputationTrend, setReputationTrend] = useState<ReputationPoint[]>([]);
   const [trendRange, setTrendRange] = useState<TrendRange>("30d");
+
+  // Auto-refresh state
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0);
+  const [countdown, setCountdown] = useState(0);
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Filter states
   const [providerFilter, setProviderFilter] = useState<string>("all");
@@ -243,6 +305,38 @@ export const IPReputationTab = () => {
     }
   };
 
+  // ── Auto-refresh logic ──
+  useEffect(() => {
+    // Clear previous timers
+    if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+
+    if (autoRefreshInterval > 0 && selectedDevice) {
+      setCountdown(autoRefreshInterval);
+      
+      countdownRef.current = setInterval(() => {
+        setCountdown((prev) => (prev <= 1 ? autoRefreshInterval : prev - 1));
+      }, 1000);
+
+      autoRefreshRef.current = setInterval(() => {
+        handleScan();
+        setCountdown(autoRefreshInterval);
+      }, autoRefreshInterval * 1000);
+    } else {
+      setCountdown(0);
+    }
+
+    return () => {
+      if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [autoRefreshInterval, selectedDevice]);
+
+  const formatCountdown = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
@@ -262,7 +356,7 @@ export const IPReputationTab = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <Select value={selectedDevice} onValueChange={setSelectedDevice}>
           <SelectTrigger className="w-64">
             <SelectValue placeholder="Select IP" />
@@ -282,6 +376,28 @@ export const IPReputationTab = () => {
             <><Search className="h-4 w-4 mr-2" /> Run Blacklist Scan</>
           )}
         </Button>
+
+        {/* Auto-refresh controls */}
+        <div className="flex items-center gap-2 ml-auto">
+          <RefreshCw className={cn("h-4 w-4 text-muted-foreground", autoRefreshInterval > 0 && "text-primary animate-spin")} style={autoRefreshInterval > 0 ? { animationDuration: "3s" } : {}} />
+          <Select value={String(autoRefreshInterval)} onValueChange={(v) => setAutoRefreshInterval(Number(v))}>
+            <SelectTrigger className="h-8 w-28 text-xs">
+              <SelectValue placeholder="Auto refresh" />
+            </SelectTrigger>
+            <SelectContent>
+              {AUTO_REFRESH_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={String(opt.value)}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {autoRefreshInterval > 0 && countdown > 0 && (
+            <Badge variant="outline" className="text-xs font-mono">
+              {formatCountdown(countdown)}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -428,36 +544,94 @@ export const IPReputationTab = () => {
       </Card>
 
       {lastResults.length > 0 && (
-
         <Card className="border-border/50">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Shield className="h-5 w-5" /> Scan Results
             </CardTitle>
+            <CardDescription>
+              {lastResults.filter(r => r.listed).length > 0
+                ? `${lastResults.filter(r => r.listed).length} of ${lastResults.length} providers flagged your IP — expand listed items for details`
+                : `All ${lastResults.length} providers report clean`}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              {lastResults.map((r, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center justify-between px-3 py-2 rounded-md text-sm ${
-                    r.listed ? "bg-destructive/10 border border-destructive/20" : "bg-card border border-border/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {r.listed ? (
-                      <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                    ) : (
-                      <CheckCircle className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
-                    )}
-                    <span className="truncate">{r.provider}</span>
-                  </div>
-                  <Badge variant={r.listed ? "destructive" : "secondary"} className="text-xs">
-                    {r.listed ? "Listed" : "Clean"}
-                  </Badge>
+          <CardContent className="space-y-2">
+            {/* Listed providers first with expandable insights */}
+            {lastResults.filter(r => r.listed).length > 0 && (
+              <div className="space-y-1 mb-4">
+                <p className="text-xs font-medium text-destructive mb-2 flex items-center gap-1.5">
+                  <Flame className="h-3.5 w-3.5" /> Listed — tap for reason & firewall fix
+                </p>
+                <Accordion type="multiple" className="w-full">
+                  {lastResults.filter(r => r.listed).map((r, i) => {
+                    const insight = getProviderInsight(r.provider);
+                    return (
+                      <AccordionItem key={`listed-${i}`} value={`listed-${i}`} className="border-destructive/20">
+                        <AccordionTrigger className="py-2 px-3 rounded-md bg-destructive/10 border border-destructive/20 hover:no-underline">
+                          <div className="flex items-center gap-2 text-sm">
+                            <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                            <span className="truncate">{r.provider}</span>
+                            <Badge variant="destructive" className="text-xs ml-auto mr-2">Listed</Badge>
+                            <Badge variant="outline" className="text-xs">{insight.category}</Badge>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-3 pt-3">
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs font-medium text-destructive flex items-center gap-1.5 mb-1">
+                                <Info className="h-3.5 w-3.5" /> Why you're listed
+                              </p>
+                              <p className="text-sm text-muted-foreground">{insight.reason}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-primary flex items-center gap-1.5 mb-1">
+                                <ShieldAlert className="h-3.5 w-3.5" /> Recommended Firewall Action
+                              </p>
+                              <p className="text-sm text-muted-foreground">{insight.firewall}</p>
+                            </div>
+                            {r.confidence > 0 && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Confidence:</span>
+                                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-32">
+                                  <div
+                                    className="h-full bg-destructive rounded-full transition-all"
+                                    style={{ width: `${Math.min(r.confidence, 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-mono text-muted-foreground">{r.confidence}%</span>
+                              </div>
+                            )}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              </div>
+            )}
+
+            {/* Clean providers grid */}
+            {lastResults.filter(r => !r.listed).length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-[hsl(var(--success))] mb-2 flex items-center gap-1.5">
+                  <CheckCircle className="h-3.5 w-3.5" /> Clean ({lastResults.filter(r => !r.listed).length})
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                  {lastResults.filter(r => !r.listed).map((r, i) => (
+                    <div
+                      key={`clean-${i}`}
+                      className="flex items-center justify-between px-3 py-1.5 rounded-md text-sm bg-card border border-border/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" />
+                        <span className="truncate text-xs">{r.provider}</span>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px]">Clean</Badge>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
