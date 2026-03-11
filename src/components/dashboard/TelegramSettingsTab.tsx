@@ -14,6 +14,7 @@ export const TelegramSettingsTab = () => {
   const [testing, setTesting] = useState(false);
   const [config, setConfig] = useState({
     id: null as string | null,
+    bot_token: "",
     chat_id: "",
     enabled: true,
     notify_down: true,
