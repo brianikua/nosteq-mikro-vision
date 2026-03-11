@@ -294,6 +294,7 @@ export type Database = {
       }
       telegram_config: {
         Row: {
+          bot_token: string | null
           chat_id: string
           created_at: string | null
           enabled: boolean | null
@@ -306,6 +307,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          bot_token?: string | null
           chat_id: string
           created_at?: string | null
           enabled?: boolean | null
@@ -318,6 +320,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          bot_token?: string | null
           chat_id?: string
           created_at?: string | null
           enabled?: boolean | null

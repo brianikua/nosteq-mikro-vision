@@ -22,13 +22,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-
-    if (!botToken) {
-      return new Response(JSON.stringify({ error: "Telegram bot token not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const authClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -50,6 +43,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Get bot token from DB, fallback to env
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const { data: tgConfig } = await supabase
+      .from("telegram_config")
+      .select("bot_token")
+      .limit(1)
+      .maybeSingle();
+
+    const botToken = tgConfig?.bot_token || Deno.env.get("TELEGRAM_BOT_TOKEN");
+    if (!botToken) {
+      return new Response(JSON.stringify({ error: "Telegram bot token not configured. Add it in Telegram settings." }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Send via Telegram Bot API
     const telegramRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
@@ -65,7 +73,6 @@ Deno.serve(async (req) => {
     const success = telegramData.ok === true;
 
     // Log notification
-    const supabase = createClient(supabaseUrl, serviceKey);
     await supabase.from("notification_log").insert({
       event_type: event_type || "test",
       ip_address: ip_address || "N/A",

@@ -14,6 +14,7 @@ export const TelegramSettingsTab = () => {
   const [testing, setTesting] = useState(false);
   const [config, setConfig] = useState({
     id: null as string | null,
+    bot_token: "",
     chat_id: "",
     enabled: true,
     notify_down: true,
@@ -33,6 +34,7 @@ export const TelegramSettingsTab = () => {
       if (data) {
         setConfig({
           id: data.id,
+          bot_token: (data as any).bot_token || "",
           chat_id: data.chat_id,
           enabled: data.enabled ?? true,
           notify_down: data.notify_down ?? true,
@@ -48,6 +50,10 @@ export const TelegramSettingsTab = () => {
   }, []);
 
   const handleSave = async () => {
+    if (!config.bot_token.trim()) {
+      toast.error("Bot Token is required");
+      return;
+    }
     if (!config.chat_id.trim()) {
       toast.error("Chat ID is required");
       return;
@@ -55,6 +61,7 @@ export const TelegramSettingsTab = () => {
     setSaving(true);
     try {
       const payload = {
+        bot_token: config.bot_token.trim(),
         chat_id: config.chat_id.trim(),
         enabled: config.enabled,
         notify_down: config.notify_down,
@@ -137,7 +144,21 @@ export const TelegramSettingsTab = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="chat_id">Chat ID</Label>
+            <Label htmlFor="bot_token">Bot Token</Label>
+            <Input
+              id="bot_token"
+              type="password"
+              placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+              value={config.bot_token}
+              onChange={(e) => setConfig({ ...config, bot_token: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Create a bot via <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="underline text-primary">@BotFather</a> on Telegram and paste the token here.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="chat_id">User / Channel / Group ID</Label>
             <Input
               id="chat_id"
               placeholder="-1001234567890"
@@ -145,7 +166,7 @@ export const TelegramSettingsTab = () => {
               onChange={(e) => setConfig({ ...config, chat_id: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              Get your Chat ID by messaging @userinfobot on Telegram. For groups, use the group chat ID.
+              Your user ID, channel ID, or group ID. Message <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="underline text-primary">@userinfobot</a> to get your ID. For channels/groups, use the numeric ID (e.g. -1001234567890).
             </p>
           </div>
 
