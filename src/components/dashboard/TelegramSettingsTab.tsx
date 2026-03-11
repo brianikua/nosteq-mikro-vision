@@ -108,7 +108,7 @@ export const TelegramSettingsTab = () => {
       const { data, error } = await supabase.functions.invoke("send-telegram", {
         body: {
           message: "🧪 *Test Notification*\n\nNosteq IP Monitor is connected and working\\!",
-          chat_id: config.chat_id.trim(),
+          chat_id: chatIdToTest,
         },
       });
       if (error) throw error;

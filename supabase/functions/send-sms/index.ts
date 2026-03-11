@@ -65,31 +65,54 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!smsConfig?.webhook_url) {
-      return new Response(JSON.stringify({ error: "SMS webhook not configured" }), {
+      return new Response(JSON.stringify({ error: "SMS gateway not configured" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Send via webhook
+    const gatewayUrl = smsConfig.webhook_url;
+    const userId2 = smsConfig.sms_user_id || "";
+    const senderId = smsConfig.sms_sender_id || "";
+    const apiKey = smsConfig.techra_api_key || "";
+
+    // Send via Techra SMS gateway
     let res: Response;
     if (smsConfig.webhook_method === "GET") {
-      const url = new URL(smsConfig.webhook_url);
+      const url = new URL(gatewayUrl);
+      url.searchParams.set("user_id", userId2);
+      url.searchParams.set("sender_id", senderId);
+      url.searchParams.set("api_key", apiKey);
       url.searchParams.set("phone_number", phone_number);
       url.searchParams.set("message", message);
       res = await fetch(url.toString());
     } else {
-      res = await fetch(smsConfig.webhook_url, {
+      res = await fetch(gatewayUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone_number, message }),
+        body: JSON.stringify({
+          user_id: userId2,
+          sender_id: senderId,
+          api_key: apiKey,
+          phone_number,
+          message,
+        }),
       });
     }
 
     const success = res.ok;
     const responseText = await res.text().catch(() => "");
 
-    console.log(`SMS webhook response: ${res.status} - ${responseText.substring(0, 200)}`);
+    console.log(`SMS gateway response: ${res.status} - ${responseText.substring(0, 200)}`);
+
+    // Log notification
+    await adminClient.from("notification_log").insert({
+      event_type: "sms_test",
+      ip_address: "N/A",
+      message,
+      success,
+      error_message: success ? null : responseText.substring(0, 500),
+    });
 
     return new Response(
       JSON.stringify({ success, status: res.status, response: responseText.substring(0, 500) }),
