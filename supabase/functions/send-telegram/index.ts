@@ -43,6 +43,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Get bot token from DB, fallback to env
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const { data: tgConfig } = await supabase
+      .from("telegram_config")
+      .select("bot_token")
+      .limit(1)
+      .maybeSingle();
+
+    const botToken = tgConfig?.bot_token || Deno.env.get("TELEGRAM_BOT_TOKEN");
+    if (!botToken) {
+      return new Response(JSON.stringify({ error: "Telegram bot token not configured. Add it in Telegram settings." }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Send via Telegram Bot API
     const telegramRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
