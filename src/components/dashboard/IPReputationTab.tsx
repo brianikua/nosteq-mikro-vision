@@ -609,7 +609,7 @@ export const IPReputationTab = () => {
                 </p>
                 {(() => {
                   const provCounts: Record<string, number> = {};
-                  allHistoryEntries.forEach(e => {
+                  globalHistoryEntries.forEach(e => {
                     provCounts[e.provider] = (provCounts[e.provider] || 0) + 1;
                   });
                   const sorted = Object.entries(provCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
