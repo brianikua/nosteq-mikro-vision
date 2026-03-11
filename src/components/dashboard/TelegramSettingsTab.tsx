@@ -98,8 +98,9 @@ export const TelegramSettingsTab = () => {
   };
 
   const handleTest = async () => {
-    if (!config.chat_id.trim()) {
-      toast.error("Save your Chat ID first");
+    const chatIdToTest = testChatId.trim() || config.chat_id.trim();
+    if (!chatIdToTest) {
+      toast.error("Enter a Chat ID to test");
       return;
     }
     setTesting(true);
