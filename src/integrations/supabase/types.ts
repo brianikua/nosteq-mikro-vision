@@ -252,6 +252,9 @@ export type Database = {
           notify_down: boolean | null
           notify_summary: boolean | null
           notify_up: boolean | null
+          sms_sender_id: string | null
+          sms_user_id: string | null
+          techra_api_key: string | null
           updated_at: string | null
           webhook_method: string
           webhook_url: string
@@ -269,6 +272,9 @@ export type Database = {
           notify_down?: boolean | null
           notify_summary?: boolean | null
           notify_up?: boolean | null
+          sms_sender_id?: string | null
+          sms_user_id?: string | null
+          techra_api_key?: string | null
           updated_at?: string | null
           webhook_method?: string
           webhook_url: string
@@ -286,6 +292,9 @@ export type Database = {
           notify_down?: boolean | null
           notify_summary?: boolean | null
           notify_up?: boolean | null
+          sms_sender_id?: string | null
+          sms_user_id?: string | null
+          techra_api_key?: string | null
           updated_at?: string | null
           webhook_method?: string
           webhook_url?: string

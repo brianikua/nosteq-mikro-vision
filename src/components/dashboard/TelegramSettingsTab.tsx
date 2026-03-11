@@ -12,6 +12,7 @@ export const TelegramSettingsTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testChatId, setTestChatId] = useState("");
   const [config, setConfig] = useState({
     id: null as string | null,
     bot_token: "",
@@ -97,8 +98,9 @@ export const TelegramSettingsTab = () => {
   };
 
   const handleTest = async () => {
-    if (!config.chat_id.trim()) {
-      toast.error("Save your Chat ID first");
+    const chatIdToTest = testChatId.trim() || config.chat_id.trim();
+    if (!chatIdToTest) {
+      toast.error("Enter a Chat ID to test");
       return;
     }
     setTesting(true);
@@ -106,7 +108,7 @@ export const TelegramSettingsTab = () => {
       const { data, error } = await supabase.functions.invoke("send-telegram", {
         body: {
           message: "🧪 *Test Notification*\n\nNosteq IP Monitor is connected and working\\!",
-          chat_id: config.chat_id.trim(),
+          chat_id: chatIdToTest,
         },
       });
       if (error) throw error;
@@ -175,15 +177,39 @@ export const TelegramSettingsTab = () => {
             <Switch checked={config.enabled} onCheckedChange={(v) => setConfig({ ...config, enabled: v })} />
           </div>
 
-          <div className="flex gap-2 pt-2">
-            <Button onClick={handleSave} disabled={saving} className="flex-1">
-              {saving ? "Saving..." : "Save Settings"}
-            </Button>
-            <Button variant="outline" onClick={handleTest} disabled={testing}>
-              <Send className="h-4 w-4 mr-2" />
-              {testing ? "Sending..." : "Test"}
-            </Button>
+          <Button onClick={handleSave} disabled={saving} className="w-full">
+            {saving ? "Saving..." : "Save Settings"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Test Notification Card */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" /> Test Bot Notification
+          </CardTitle>
+          <CardDescription>
+            Enter a phone number associated with a Telegram account to send a test notification.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="test_chat_id">Chat / User / Group ID</Label>
+            <Input
+              id="test_chat_id"
+              placeholder="Enter chat ID to test"
+              value={testChatId}
+              onChange={(e) => setTestChatId(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Leave empty to use the saved Chat ID above.
+            </p>
           </div>
+          <Button variant="outline" onClick={handleTest} disabled={testing} className="w-full">
+            <Send className="h-4 w-4 mr-2" />
+            {testing ? "Sending..." : "Send Test Notification"}
+          </Button>
         </CardContent>
       </Card>
 
