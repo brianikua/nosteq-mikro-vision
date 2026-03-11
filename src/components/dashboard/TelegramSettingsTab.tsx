@@ -144,7 +144,21 @@ export const TelegramSettingsTab = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="chat_id">Chat ID</Label>
+            <Label htmlFor="bot_token">Bot Token</Label>
+            <Input
+              id="bot_token"
+              type="password"
+              placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+              value={config.bot_token}
+              onChange={(e) => setConfig({ ...config, bot_token: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Create a bot via <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="underline text-primary">@BotFather</a> on Telegram and paste the token here.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="chat_id">User / Channel / Group ID</Label>
             <Input
               id="chat_id"
               placeholder="-1001234567890"
@@ -152,7 +166,7 @@ export const TelegramSettingsTab = () => {
               onChange={(e) => setConfig({ ...config, chat_id: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              Get your Chat ID by messaging @userinfobot on Telegram. For groups, use the group chat ID.
+              Your user ID, channel ID, or group ID. Message <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="underline text-primary">@userinfobot</a> to get your ID. For channels/groups, use the numeric ID (e.g. -1001234567890).
             </p>
           </div>
 
