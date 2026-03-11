@@ -50,6 +50,10 @@ export const TelegramSettingsTab = () => {
   }, []);
 
   const handleSave = async () => {
+    if (!config.bot_token.trim()) {
+      toast.error("Bot Token is required");
+      return;
+    }
     if (!config.chat_id.trim()) {
       toast.error("Chat ID is required");
       return;
@@ -57,6 +61,7 @@ export const TelegramSettingsTab = () => {
     setSaving(true);
     try {
       const payload = {
+        bot_token: config.bot_token.trim(),
         chat_id: config.chat_id.trim(),
         enabled: config.enabled,
         notify_down: config.notify_down,
