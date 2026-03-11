@@ -76,29 +76,17 @@ Deno.serve(async (req) => {
     const senderId = smsConfig.sms_sender_id || "";
     const apiKey = smsConfig.techra_api_key || "";
 
-    // Send via Techra SMS gateway
-    let res: Response;
-    if (smsConfig.webhook_method === "GET") {
-      const url = new URL(gatewayUrl);
-      url.searchParams.set("userid", userId2);
-      url.searchParams.set("senderid", senderId);
-      url.searchParams.set("apiKey", apiKey);
-      url.searchParams.set("mobile", phone_number);
-      url.searchParams.set("msg", message);
-      res = await fetch(url.toString());
-    } else {
-      res = await fetch(gatewayUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userid: userId2,
-          senderid: senderId,
-          apiKey: apiKey,
-          mobile: phone_number,
-          msg: message,
-        }),
-      });
-    }
+    // Send via Techra SMS gateway - use GET with query params
+    const url = new URL(gatewayUrl);
+    url.searchParams.set("userid", userId2);
+    url.searchParams.set("senderid", senderId);
+    url.searchParams.set("apiKey", apiKey);
+    url.searchParams.set("mobile", phone_number);
+    url.searchParams.set("msg", message);
+
+    console.log(`SMS gateway request URL: ${url.toString()}`);
+
+    const res = await fetch(url.toString(), { method: "GET" });
 
     const success = res.ok;
     const responseText = await res.text().catch(() => "");
