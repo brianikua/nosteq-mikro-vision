@@ -184,6 +184,16 @@ export const IPReputationTab = () => {
 
   const hasActiveFilters = providerFilter !== "all" || startDate || endDate;
 
+  const loadGlobalHistory = useCallback(async () => {
+    const { data } = await supabase
+      .from("blacklist_scans")
+      .select("id, provider, ip_address, scanned_at, confidence_score")
+      .gt("confidence_score", 0)
+      .order("scanned_at", { ascending: false })
+      .limit(1000);
+    if (data) setGlobalHistoryEntries(data);
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.from("devices").select("id, name, ip_address").order("name");
@@ -194,6 +204,7 @@ export const IPReputationTab = () => {
       setLoading(false);
     };
     load();
+    loadGlobalHistory();
   }, []);
 
   useEffect(() => {
