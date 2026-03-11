@@ -12,6 +12,7 @@ export const TelegramSettingsTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testChatId, setTestChatId] = useState("");
   const [config, setConfig] = useState({
     id: null as string | null,
     bot_token: "",
