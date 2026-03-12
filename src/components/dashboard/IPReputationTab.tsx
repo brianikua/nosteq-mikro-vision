@@ -258,6 +258,18 @@ export const IPReputationTab = () => {
     loadSummary();
   }, [selectedDevice]);
 
+  // Auto-run scan when user selects a new device (skip initial load)
+  useEffect(() => {
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
+      return;
+    }
+    if (autoScanOnSelect && selectedDevice && !scanning) {
+      setAutoScanOnSelect(false);
+      handleScan();
+    }
+  }, [autoScanOnSelect, selectedDevice]);
+
   // Load reputation trend based on range
   const loadTrend = async (deviceId: string, range: TrendRange) => {
     const now = new Date();
