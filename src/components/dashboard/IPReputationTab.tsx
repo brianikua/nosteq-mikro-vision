@@ -719,7 +719,19 @@ export const IPReputationTab = () => {
                                 <span className="text-xs font-mono text-muted-foreground">{r.confidence}%</span>
                               </div>
                             )}
-                          </div>
+                            {insight.delist_url && (
+                              <div className="pt-1">
+                                <a
+                                  href={insight.delist_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline bg-primary/10 px-3 py-1.5 rounded-md transition-colors hover:bg-primary/20"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                  Request Delisting
+                                </a>
+                              </div>
+                            )}
                         </AccordionContent>
                       </AccordionItem>
                     );
