@@ -415,7 +415,7 @@ export const IPReputationTab = () => {
             ))}
           </SelectContent>
         </Select>
-        <Button id="run-blacklist-scan-btn" onClick={handleScan} disabled={scanning || !selectedDevice}>
+        <Button onClick={handleScan} disabled={scanning || !selectedDevice}>
           {scanning ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Scanning 34+ providers...</>
           ) : (
