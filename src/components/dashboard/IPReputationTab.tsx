@@ -732,6 +732,7 @@ export const IPReputationTab = () => {
                                 </a>
                               </div>
                             )}
+                          </div>
                         </AccordionContent>
                       </AccordionItem>
                     );
