@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, Search, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, TrendingUp, RefreshCw, Info, Flame, ExternalLink } from "lucide-react";
+import { Loader2, Shield, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, TrendingUp, RefreshCw, Info, Flame, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format, isAfter, isBefore, startOfDay, endOfDay, subHours, subDays } from "date-fns";
@@ -415,13 +415,11 @@ export const IPReputationTab = () => {
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={handleScan} disabled={scanning || !selectedDevice}>
-          {scanning ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Scanning 34+ providers...</>
-          ) : (
-            <><Search className="h-4 w-4 mr-2" /> Run Blacklist Scan</>
-          )}
-        </Button>
+        {scanning && (
+          <Badge variant="outline" className="flex items-center gap-1.5 text-xs">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Scanning 34+ providers...
+          </Badge>
+        )}
 
         {/* Auto-refresh controls */}
         <div className="flex items-center gap-2 ml-auto">
