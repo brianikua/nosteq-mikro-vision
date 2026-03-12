@@ -390,11 +390,7 @@ export const IPReputationTab = () => {
       <div className="flex items-center gap-4 flex-wrap">
         <Select value={selectedDevice} onValueChange={(val) => {
           setSelectedDevice(val);
-          // Auto-run scan after state update
-          setTimeout(() => {
-            const btn = document.getElementById("run-blacklist-scan-btn");
-            if (btn) btn.click();
-          }, 300);
+          setAutoScanOnSelect(true);
         }}>
           <SelectTrigger className="w-64">
             <SelectValue placeholder="Select IP" />
