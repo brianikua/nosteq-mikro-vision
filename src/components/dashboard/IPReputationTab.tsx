@@ -60,6 +60,7 @@ const getProviderInsight = (provider: string) => {
     reason: "This provider detected suspicious or abusive activity from your IP address.",
     firewall: "Block outbound SMTP (port 25), rate-limit connections, and review firewall rules.",
     category: "unknown",
+    delist_url: "",
   };
 };
 
