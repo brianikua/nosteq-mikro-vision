@@ -133,6 +133,8 @@ export const IPReputationTab = () => {
   const [countdown, setCountdown] = useState(0);
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [autoScanOnSelect, setAutoScanOnSelect] = useState(false);
+  const initialLoadRef = useRef(true);
 
   // Filter states
   const [providerFilter, setProviderFilter] = useState<string>("all");
