@@ -34,7 +34,7 @@ export const UpdateBanner = () => {
         <span>
           System updated to <span className="font-semibold text-primary">v{latestVersion}</span> —{" "}
           <button
-            onClick={() => navigate("/changelog")}
+            onClick={() => navigate("/admin")}
             className="underline text-primary hover:text-primary/80"
           >
             View Release Notes
