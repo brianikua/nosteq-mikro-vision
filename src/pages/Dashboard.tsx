@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Users } from "lucide-react";
+import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Users, Server, FileText } from "lucide-react";
 import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
@@ -12,6 +12,8 @@ import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
 import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
 import { toast } from "sonner";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
+import { UpdateBanner } from "@/components/dashboard/UpdateBanner";
+import { VersionFooter } from "@/components/dashboard/VersionFooter";
 
 const Dashboard = () => {
   useAutoLogout();
@@ -83,11 +85,21 @@ const Dashboard = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add IP
               </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate("/changelog")}>
+                <FileText className="h-4 w-4 mr-2" />
+                Changelog
+              </Button>
               {isSuperadmin && (
-                <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
-                  <Users className="h-4 w-4 mr-2" />
-                  Users
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={() => navigate("/system-health")}>
+                    <Server className="h-4 w-4 mr-2" />
+                    System
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Users
+                  </Button>
+                </>
               )}
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
@@ -99,6 +111,7 @@ const Dashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        <UpdateBanner />
         <Tabs defaultValue="monitor" className="space-y-6">
           <div className="flex items-center justify-between">
             <TabsList className="bg-card border border-border/50">
@@ -144,6 +157,7 @@ const Dashboard = () => {
       </main>
 
       <AddIPDialog open={showAddIP} onOpenChange={setShowAddIP} onSaved={handleRefresh} />
+      <VersionFooter />
     </div>
   );
 };
