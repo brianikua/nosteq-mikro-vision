@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Users, Server, FileText } from "lucide-react";
+import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Settings } from "lucide-react";
 import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
@@ -21,7 +21,6 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
-  const [isSuperadmin, setIsSuperadmin] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -30,13 +29,6 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        const { data } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .eq("role", "superadmin")
-          .maybeSingle();
-        setIsSuperadmin(!!data);
       }
     };
     checkAuth();
@@ -65,7 +57,7 @@ const Dashboard = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <header className="border-b border-border/50 bg-card/30 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -85,22 +77,10 @@ const Dashboard = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add IP
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate("/changelog")}>
-                <FileText className="h-4 w-4 mr-2" />
-                Changelog
+              <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
+                <Settings className="h-4 w-4 mr-2" />
+                Admin
               </Button>
-              {isSuperadmin && (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => navigate("/system-health")}>
-                    <Server className="h-4 w-4 mr-2" />
-                    System
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
-                    <Users className="h-4 w-4 mr-2" />
-                    Users
-                  </Button>
-                </>
-              )}
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
@@ -110,7 +90,7 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 py-8">
         <UpdateBanner />
         <Tabs defaultValue="monitor" className="space-y-6">
           <div className="flex items-center justify-between">
