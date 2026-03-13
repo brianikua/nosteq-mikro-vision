@@ -157,6 +157,7 @@ const Dashboard = () => {
       </main>
 
       <AddIPDialog open={showAddIP} onOpenChange={setShowAddIP} onSaved={handleRefresh} />
+      <VersionFooter />
     </div>
   );
 };

@@ -99,6 +99,7 @@ const Auth = () => {
           </form>
         </CardContent>
       </Card>
+      <p className="mt-4 text-xs text-muted-foreground">{getFullVersionString()}</p>
     </div>
   );
 };

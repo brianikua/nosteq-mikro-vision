@@ -26,6 +26,8 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/users" element={<Users />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/changelog" element={<Changelog />} />
+          <Route path="/system-health" element={<SystemHealth />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
