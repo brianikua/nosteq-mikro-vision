@@ -85,11 +85,21 @@ const Dashboard = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add IP
               </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate("/changelog")}>
+                <FileText className="h-4 w-4 mr-2" />
+                Changelog
+              </Button>
               {isSuperadmin && (
-                <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
-                  <Users className="h-4 w-4 mr-2" />
-                  Users
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={() => navigate("/system-health")}>
+                    <Server className="h-4 w-4 mr-2" />
+                    System
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate("/users")}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Users
+                  </Button>
+                </>
               )}
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
