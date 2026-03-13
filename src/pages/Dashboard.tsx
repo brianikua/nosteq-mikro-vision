@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Users } from "lucide-react";
+import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Users, Server, FileText } from "lucide-react";
 import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
