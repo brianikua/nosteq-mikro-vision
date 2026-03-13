@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Activity } from "lucide-react";
 import { z } from "zod";
+import { getFullVersionString } from "@/lib/version";
 
 const authSchema = z.object({
   email: z.string().email("Invalid email address").max(255, "Email must be less than 255 characters"),
