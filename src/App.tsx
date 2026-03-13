@@ -8,6 +8,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import ResetPassword from "./pages/ResetPassword";
+import Changelog from "./pages/Changelog";
+import SystemHealth from "./pages/SystemHealth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
