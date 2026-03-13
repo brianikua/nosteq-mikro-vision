@@ -12,6 +12,8 @@ import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
 import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
 import { toast } from "sonner";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
+import { UpdateBanner } from "@/components/dashboard/UpdateBanner";
+import { VersionFooter } from "@/components/dashboard/VersionFooter";
 
 const Dashboard = () => {
   useAutoLogout();
