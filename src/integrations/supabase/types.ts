@@ -203,6 +203,48 @@ export type Database = {
         }
         Relationships: []
       }
+      release_notes: {
+        Row: {
+          build_number: number
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          is_major: boolean
+          release_date: string
+          title: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          build_number?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          is_major?: boolean
+          release_date?: string
+          title: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          build_number?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          is_major?: boolean
+          release_date?: string
+          title?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       reputation_history: {
         Row: {
           active_listings: number
