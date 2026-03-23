@@ -30,6 +30,14 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .single();
+        if (data && (data.role === "admin" || data.role === "superadmin")) {
+          setIsAdminOrAbove(true);
+        }
       }
     };
     checkAuth();
