@@ -21,6 +21,7 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
+  const [isAdminOrAbove, setIsAdminOrAbove] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -29,6 +30,14 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .single();
+        if (data && (data.role === "admin" || data.role === "superadmin")) {
+          setIsAdminOrAbove(true);
+        }
       }
     };
     checkAuth();
@@ -77,10 +86,12 @@ const Dashboard = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add IP
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
-                <Settings className="h-4 w-4 mr-2" />
-                Admin
-              </Button>
+              {isAdminOrAbove && (
+                <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Admin
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
