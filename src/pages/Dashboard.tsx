@@ -86,10 +86,12 @@ const Dashboard = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add IP
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
-                <Settings className="h-4 w-4 mr-2" />
-                Admin
-              </Button>
+              {isAdminOrAbove && (
+                <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Admin
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
