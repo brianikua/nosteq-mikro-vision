@@ -21,6 +21,7 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
+  const [isAdminOrAbove, setIsAdminOrAbove] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
