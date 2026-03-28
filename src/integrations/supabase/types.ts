@@ -173,6 +173,48 @@ export type Database = {
           },
         ]
       }
+      notification_channels: {
+        Row: {
+          alert_types: Json
+          channel_type: string
+          chat_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          mute_end: string | null
+          mute_schedule: string
+          mute_start: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          alert_types?: Json
+          channel_type?: string
+          chat_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          mute_end?: string | null
+          mute_schedule?: string
+          mute_start?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          alert_types?: Json
+          channel_type?: string
+          chat_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          mute_end?: string | null
+          mute_schedule?: string
+          mute_start?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_log: {
         Row: {
           error_message: string | null
