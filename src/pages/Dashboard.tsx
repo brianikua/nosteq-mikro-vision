@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Settings } from "lucide-react";
+import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Settings, BarChart3 } from "lucide-react";
 import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
@@ -11,6 +11,7 @@ import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab"
 import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
 import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
 import { toast } from "sonner";
+import { UptimeReportTab } from "@/components/dashboard/UptimeReportTab";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { UpdateBanner } from "@/components/dashboard/UpdateBanner";
 import { VersionFooter } from "@/components/dashboard/VersionFooter";
@@ -115,6 +116,9 @@ const Dashboard = () => {
               <TabsTrigger value="notifications" className="flex items-center gap-2">
                 <Bell className="h-4 w-4" /> Notifications
               </TabsTrigger>
+              <TabsTrigger value="uptime" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" /> Uptime Report
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -141,8 +145,12 @@ const Dashboard = () => {
               </TabsContent>
               <TabsContent value="log">
                 <NotificationLogTab />
-              </TabsContent>
-            </Tabs>
+          </TabsContent>
+
+          <TabsContent value="uptime">
+            <UptimeReportTab />
+          </TabsContent>
+        </Tabs>
           </TabsContent>
         </Tabs>
       </main>
