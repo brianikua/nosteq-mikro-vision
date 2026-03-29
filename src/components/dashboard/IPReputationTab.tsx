@@ -736,7 +736,14 @@ export const IPReputationTab = () => {
                   <Flame className="h-3.5 w-3.5" /> Listed — tap for reason & firewall fix
                 </p>
                 <Accordion type="multiple" className="w-full">
-                  {lastResults.filter(r => r.listed).map((r, i) => {
+                  {lastResults.filter(r => r.listed)
+                    .sort((a, b) => {
+                      const order = { critical: 0, high: 1, medium: 2, low: 3 };
+                      const aInsight = getProviderInsight(a.provider);
+                      const bInsight = getProviderInsight(b.provider);
+                      return (order[getSeverity(aInsight.category)] || 3) - (order[getSeverity(bInsight.category)] || 3);
+                    })
+                    .map((r, i) => {
                     const insight = getProviderInsight(r.provider);
                     const severity = getSeverity(insight.category);
                     const sevConfig = severityConfig[severity];
