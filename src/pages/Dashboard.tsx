@@ -11,6 +11,7 @@ import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab"
 import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
 import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
 import { toast } from "sonner";
+import { UptimeReportTab } from "@/components/dashboard/UptimeReportTab";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { UpdateBanner } from "@/components/dashboard/UpdateBanner";
 import { VersionFooter } from "@/components/dashboard/VersionFooter";
@@ -114,6 +115,9 @@ const Dashboard = () => {
               </TabsTrigger>
               <TabsTrigger value="notifications" className="flex items-center gap-2">
                 <Bell className="h-4 w-4" /> Notifications
+              </TabsTrigger>
+              <TabsTrigger value="uptime" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" /> Uptime Report
               </TabsTrigger>
             </TabsList>
           </div>
