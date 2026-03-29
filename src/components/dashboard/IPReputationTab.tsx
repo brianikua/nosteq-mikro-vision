@@ -326,6 +326,51 @@ export const IPReputationTab = () => {
         // Refresh trend chart + history for analytics
         await loadTrend(selectedDevice, trendRange);
 
+        // Record blacklist history for newly detected listings
+        if (r.details) {
+          const listedProviders = r.details.filter((d: any) => d.listed);
+          if (listedProviders.length > 0 && device) {
+            // Check existing active listings to avoid duplicates
+            const { data: existingHistory } = await supabase
+              .from("blacklist_history")
+              .select("provider")
+              .eq("device_id", selectedDevice)
+              .is("delisted_at", null);
+
+            const existingProviders = new Set((existingHistory || []).map((h: any) => h.provider));
+            const newListings = listedProviders.filter((d: any) => !existingProviders.has(d.provider));
+
+            if (newListings.length > 0) {
+              await supabase.from("blacklist_history").insert(
+                newListings.map((d: any) => {
+                  const insight = getProviderInsight(d.provider);
+                  return {
+                    device_id: selectedDevice,
+                    provider: d.provider,
+                    reason: insight.reason,
+                    confidence: d.confidence || 0,
+                    ip_address: device.ip_address,
+                  };
+                })
+              );
+            }
+
+            // Mark previously listed providers as delisted if now clean
+            const currentListedProviders = new Set(listedProviders.map((d: any) => d.provider));
+            const delistedProviders = Array.from(existingProviders).filter(p => !currentListedProviders.has(p));
+            if (delistedProviders.length > 0) {
+              for (const provider of delistedProviders) {
+                await supabase
+                  .from("blacklist_history")
+                  .update({ delisted_at: new Date().toISOString() })
+                  .eq("device_id", selectedDevice)
+                  .eq("provider", provider)
+                  .is("delisted_at", null);
+              }
+            }
+          }
+        }
+
         // Reload blacklist history so analytics auto-update
         const { data: historyData } = await supabase
           .from("blacklist_scans")
