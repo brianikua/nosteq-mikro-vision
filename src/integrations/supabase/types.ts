@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      blacklist_history: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          delisted_at: string | null
+          device_id: string
+          id: string
+          ip_address: string
+          listed_at: string
+          provider: string
+          reason: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          delisted_at?: string | null
+          device_id: string
+          id?: string
+          ip_address: string
+          listed_at?: string
+          provider: string
+          reason?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          delisted_at?: string | null
+          device_id?: string
+          id?: string
+          ip_address?: string
+          listed_at?: string
+          provider?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       blacklist_scans: {
         Row: {
           confidence_score: number | null
@@ -286,6 +322,50 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      remediation_tasks: {
+        Row: {
+          blacklist_history_id: string | null
+          completed: boolean
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          device_id: string
+          id: string
+          provider: string
+          step_label: string
+        }
+        Insert: {
+          blacklist_history_id?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          device_id: string
+          id?: string
+          provider: string
+          step_label: string
+        }
+        Update: {
+          blacklist_history_id?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          device_id?: string
+          id?: string
+          provider?: string
+          step_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remediation_tasks_blacklist_history_id_fkey"
+            columns: ["blacklist_history_id"]
+            isOneToOne: false
+            referencedRelation: "blacklist_history"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reputation_history: {
         Row: {
