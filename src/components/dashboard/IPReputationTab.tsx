@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, TrendingUp, RefreshCw, Info, Flame, ExternalLink } from "lucide-react";
+import { Loader2, Shield, AlertTriangle, CheckCircle, Clock, ShieldAlert, Lightbulb, History, Calendar, CalendarIcon, Filter, X, TrendingUp, RefreshCw, Info, Flame, ExternalLink, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
+import { getSeverity, severityConfig } from "./blacklist-utils";
+import { RemediationPanel } from "./RemediationPanel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format, isAfter, isBefore, startOfDay, endOfDay, subHours, subDays } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -323,6 +325,51 @@ export const IPReputationTab = () => {
 
         // Refresh trend chart + history for analytics
         await loadTrend(selectedDevice, trendRange);
+
+        // Record blacklist history for newly detected listings
+        if (r.details) {
+          const listedProviders = r.details.filter((d: any) => d.listed);
+          if (listedProviders.length > 0 && device) {
+            // Check existing active listings to avoid duplicates
+            const { data: existingHistory } = await supabase
+              .from("blacklist_history")
+              .select("provider")
+              .eq("device_id", selectedDevice)
+              .is("delisted_at", null);
+
+            const existingProviders = new Set((existingHistory || []).map((h: any) => h.provider));
+            const newListings = listedProviders.filter((d: any) => !existingProviders.has(d.provider));
+
+            if (newListings.length > 0) {
+              await supabase.from("blacklist_history").insert(
+                newListings.map((d: any) => {
+                  const insight = getProviderInsight(d.provider);
+                  return {
+                    device_id: selectedDevice,
+                    provider: d.provider,
+                    reason: insight.reason,
+                    confidence: d.confidence || 0,
+                    ip_address: device.ip_address,
+                  };
+                })
+              );
+            }
+
+            // Mark previously listed providers as delisted if now clean
+            const currentListedProviders = new Set(listedProviders.map((d: any) => d.provider));
+            const delistedProviders = Array.from(existingProviders).filter(p => !currentListedProviders.has(p));
+            if (delistedProviders.length > 0) {
+              for (const provider of delistedProviders) {
+                await supabase
+                  .from("blacklist_history")
+                  .update({ delisted_at: new Date().toISOString() })
+                  .eq("device_id", selectedDevice)
+                  .eq("provider", provider)
+                  .is("delisted_at", null);
+              }
+            }
+          }
+        }
 
         // Reload blacklist history so analytics auto-update
         const { data: historyData } = await supabase
@@ -689,14 +736,24 @@ export const IPReputationTab = () => {
                   <Flame className="h-3.5 w-3.5" /> Listed — tap for reason & firewall fix
                 </p>
                 <Accordion type="multiple" className="w-full">
-                  {lastResults.filter(r => r.listed).map((r, i) => {
+                  {lastResults.filter(r => r.listed)
+                    .sort((a, b) => {
+                      const order = { critical: 0, high: 1, medium: 2, low: 3 };
+                      const aInsight = getProviderInsight(a.provider);
+                      const bInsight = getProviderInsight(b.provider);
+                      return (order[getSeverity(aInsight.category)] || 3) - (order[getSeverity(bInsight.category)] || 3);
+                    })
+                    .map((r, i) => {
                     const insight = getProviderInsight(r.provider);
+                    const severity = getSeverity(insight.category);
+                    const sevConfig = severityConfig[severity];
                     return (
                       <AccordionItem key={`listed-${i}`} value={`listed-${i}`} className="border-destructive/20">
                         <AccordionTrigger className="py-2 px-3 rounded-md bg-destructive/10 border border-destructive/20 hover:no-underline">
                           <div className="flex items-center gap-2 text-sm">
                             <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
                             <span className="truncate">{r.provider}</span>
+                            <Badge variant={sevConfig.badgeVariant} className="text-[10px]">{sevConfig.label}</Badge>
                             <Badge variant="destructive" className="text-xs ml-auto mr-2">Listed</Badge>
                             <Badge variant="outline" className="text-xs">{insight.category}</Badge>
                           </div>
@@ -773,6 +830,16 @@ export const IPReputationTab = () => {
             )}
           </CardContent>
         </Card>
+      )}
+
+
+      {/* Remediation & Delisting Queue Panel */}
+      {selectedDevice && device && (
+        <RemediationPanel
+          deviceId={selectedDevice}
+          ipAddress={device.ip_address}
+          providerInsights={PROVIDER_INSIGHTS}
+        />
       )}
 
       {/* Blacklist History Timeline */}
