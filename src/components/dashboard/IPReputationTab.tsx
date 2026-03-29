@@ -780,6 +780,16 @@ export const IPReputationTab = () => {
         </Card>
       )}
 
+
+      {/* Remediation & Delisting Queue Panel */}
+      {selectedDevice && device && (
+        <RemediationPanel
+          deviceId={selectedDevice}
+          ipAddress={device.ip_address}
+          providerInsights={PROVIDER_INSIGHTS}
+        />
+      )}
+
       {/* Blacklist History Timeline */}
       <Card className="border-border/50">
         <CardHeader>
