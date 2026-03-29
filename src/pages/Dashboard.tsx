@@ -145,8 +145,12 @@ const Dashboard = () => {
               </TabsContent>
               <TabsContent value="log">
                 <NotificationLogTab />
-              </TabsContent>
-            </Tabs>
+          </TabsContent>
+
+          <TabsContent value="uptime">
+            <UptimeReportTab />
+          </TabsContent>
+        </Tabs>
           </TabsContent>
         </Tabs>
       </main>
