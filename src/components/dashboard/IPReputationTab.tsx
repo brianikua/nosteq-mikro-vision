@@ -693,12 +693,15 @@ export const IPReputationTab = () => {
                 <Accordion type="multiple" className="w-full">
                   {lastResults.filter(r => r.listed).map((r, i) => {
                     const insight = getProviderInsight(r.provider);
+                    const severity = getSeverity(insight.category);
+                    const sevConfig = severityConfig[severity];
                     return (
                       <AccordionItem key={`listed-${i}`} value={`listed-${i}`} className="border-destructive/20">
                         <AccordionTrigger className="py-2 px-3 rounded-md bg-destructive/10 border border-destructive/20 hover:no-underline">
                           <div className="flex items-center gap-2 text-sm">
                             <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
                             <span className="truncate">{r.provider}</span>
+                            <Badge variant={sevConfig.badgeVariant} className="text-[10px]">{sevConfig.label}</Badge>
                             <Badge variant="destructive" className="text-xs ml-auto mr-2">Listed</Badge>
                             <Badge variant="outline" className="text-xs">{insight.category}</Badge>
                           </div>
