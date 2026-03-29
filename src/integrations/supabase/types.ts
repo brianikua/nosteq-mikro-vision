@@ -168,6 +168,27 @@ export type Database = {
           },
         ]
       }
+      ip_notes: {
+        Row: {
+          device_id: string
+          id: string
+          note_text: string
+          updated_at: string
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          note_text?: string
+          updated_at?: string
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          note_text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ip_reputation_summary: {
         Row: {
           active_listings: number
