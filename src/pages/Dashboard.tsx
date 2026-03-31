@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Settings, BarChart3 } from "lucide-react";
 import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
-import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
+import { IPServerView } from "@/components/dashboard/IPServerView";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
 import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab";
 import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
