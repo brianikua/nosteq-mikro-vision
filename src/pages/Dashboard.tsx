@@ -24,6 +24,7 @@ const Dashboard = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
   const [isAdminOrAbove, setIsAdminOrAbove] = useState(false);
+  const [viewMode, setViewMode] = useState<"flat" | "server">("flat");
 
   useEffect(() => {
     const checkAuth = async () => {
