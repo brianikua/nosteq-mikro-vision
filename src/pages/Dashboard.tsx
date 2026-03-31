@@ -125,7 +125,19 @@ const Dashboard = () => {
           </div>
 
           <TabsContent value="monitor">
-            <IPMonitorList refreshTrigger={refreshTrigger} />
+            <div className="flex items-center gap-2 mb-3">
+              <Button variant={viewMode === "flat" ? "default" : "outline"} size="sm" className="h-8 text-xs gap-1.5" onClick={() => setViewMode("flat")}>
+                <List className="h-3.5 w-3.5" /> Flat List
+              </Button>
+              <Button variant={viewMode === "server" ? "default" : "outline"} size="sm" className="h-8 text-xs gap-1.5" onClick={() => setViewMode("server")}>
+                <Monitor className="h-3.5 w-3.5" /> Server View
+              </Button>
+            </div>
+            {viewMode === "flat" ? (
+              <IPMonitorList refreshTrigger={refreshTrigger} />
+            ) : (
+              <IPServerView refreshTrigger={refreshTrigger} />
+            )}
           </TabsContent>
 
           <TabsContent value="reputation">
