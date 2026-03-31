@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Settings, BarChart3 } from "lucide-react";
+import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Settings, BarChart3, List, Monitor } from "lucide-react";
 import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
+import { IPServerView } from "@/components/dashboard/IPServerView";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
 import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
 import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab";
@@ -23,6 +24,7 @@ const Dashboard = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
   const [isAdminOrAbove, setIsAdminOrAbove] = useState(false);
+  const [viewMode, setViewMode] = useState<"flat" | "server">("flat");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -123,7 +125,19 @@ const Dashboard = () => {
           </div>
 
           <TabsContent value="monitor">
-            <IPMonitorList refreshTrigger={refreshTrigger} />
+            <div className="flex items-center gap-2 mb-3">
+              <Button variant={viewMode === "flat" ? "default" : "outline"} size="sm" className="h-8 text-xs gap-1.5" onClick={() => setViewMode("flat")}>
+                <List className="h-3.5 w-3.5" /> Flat List
+              </Button>
+              <Button variant={viewMode === "server" ? "default" : "outline"} size="sm" className="h-8 text-xs gap-1.5" onClick={() => setViewMode("server")}>
+                <Monitor className="h-3.5 w-3.5" /> Server View
+              </Button>
+            </div>
+            {viewMode === "flat" ? (
+              <IPMonitorList refreshTrigger={refreshTrigger} />
+            ) : (
+              <IPServerView refreshTrigger={refreshTrigger} />
+            )}
           </TabsContent>
 
           <TabsContent value="reputation">

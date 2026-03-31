@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, LogOut, Settings, Users, FileText, Server, KeyRound } from "lucide-react";
+import { ArrowLeft, LogOut, Settings, Users, FileText, Server, KeyRound, Monitor } from "lucide-react";
 import { UserManagement } from "@/components/dashboard/UserManagement";
 import { ChangelogTab } from "@/components/dashboard/ChangelogTab";
 import { SystemHealthTab } from "@/components/dashboard/SystemHealthTab";
+import { ServerManagement } from "@/components/dashboard/ServerManagement";
 import { VersionFooter } from "@/components/dashboard/VersionFooter";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 
@@ -85,6 +86,11 @@ const AdminPanel = () => {
                 <Server className="h-4 w-4" /> System Health
               </TabsTrigger>
             )}
+            {isSuperadmin && (
+              <TabsTrigger value="servers" className="flex items-center gap-1.5">
+                <Monitor className="h-4 w-4" /> Servers
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {isSuperadmin && (
@@ -100,6 +106,12 @@ const AdminPanel = () => {
           {isSuperadmin && (
             <TabsContent value="system">
               <SystemHealthTab />
+            </TabsContent>
+          )}
+
+          {isSuperadmin && (
+            <TabsContent value="servers">
+              <ServerManagement />
             </TabsContent>
           )}
         </Tabs>
