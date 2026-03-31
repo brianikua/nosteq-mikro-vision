@@ -86,6 +86,11 @@ const AdminPanel = () => {
                 <Server className="h-4 w-4" /> System Health
               </TabsTrigger>
             )}
+            {isSuperadmin && (
+              <TabsTrigger value="servers" className="flex items-center gap-1.5">
+                <Monitor className="h-4 w-4" /> Servers
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {isSuperadmin && (
@@ -101,6 +106,12 @@ const AdminPanel = () => {
           {isSuperadmin && (
             <TabsContent value="system">
               <SystemHealthTab />
+            </TabsContent>
+          )}
+
+          {isSuperadmin && (
+            <TabsContent value="servers">
+              <ServerManagement />
             </TabsContent>
           )}
         </Tabs>
