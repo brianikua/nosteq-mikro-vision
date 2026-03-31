@@ -98,11 +98,16 @@ export type Database = {
           created_at: string
           id: string
           ip_address: string
+          ip_label: string | null
+          ip_role: string | null
+          is_primary: boolean | null
           is_up: boolean | null
           last_latency_ms: number | null
           last_ping_at: string | null
+          monitor_enabled: boolean | null
           name: string
           notify_number: string[] | null
+          server_id: string | null
           updated_at: string
         }
         Insert: {
@@ -111,11 +116,16 @@ export type Database = {
           created_at?: string
           id?: string
           ip_address: string
+          ip_label?: string | null
+          ip_role?: string | null
+          is_primary?: boolean | null
           is_up?: boolean | null
           last_latency_ms?: number | null
           last_ping_at?: string | null
+          monitor_enabled?: boolean | null
           name: string
           notify_number?: string[] | null
+          server_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -124,12 +134,46 @@ export type Database = {
           created_at?: string
           id?: string
           ip_address?: string
+          ip_label?: string | null
+          ip_role?: string | null
+          is_primary?: boolean | null
           is_up?: boolean | null
           last_latency_ms?: number | null
           last_ping_at?: string | null
+          monitor_enabled?: boolean | null
           name?: string
           notify_number?: string[] | null
+          server_id?: string | null
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "devices_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ip_groups: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -419,6 +463,44 @@ export type Database = {
             columns: ["device_id"]
             isOneToOne: false
             referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      servers: {
+        Row: {
+          created_at: string
+          description: string | null
+          group_id: string | null
+          id: string
+          location: string | null
+          name: string
+          server_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          group_id?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          server_type?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          group_id?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          server_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servers_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "ip_groups"
             referencedColumns: ["id"]
           },
         ]
