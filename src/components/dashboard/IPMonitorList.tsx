@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Loader2, Wifi, Trash2, Shield, Clock, ChevronDown, Globe, Pencil,
   Search, ArrowUpDown, Download, RefreshCw, ShieldCheck, BellOff, StickyNote,
-  Activity,
+  Activity, Server,
 } from "lucide-react";
 import { EditIPDialog } from "./EditIPDialog";
 import { DeleteIPDialog } from "./DeleteIPDialog";
+import { LinkToServerDialog } from "./LinkToServerDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -59,6 +60,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editDevice, setEditDevice] = useState<MonitoredIP | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MonitoredIP | null>(null);
+  const [linkTarget, setLinkTarget] = useState<MonitoredIP | null>(null);
 
   // Search, filter, sort
   const [searchQuery, setSearchQuery] = useState("");
@@ -559,6 +561,9 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setEditDevice(ip); }}>
                     <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
                   </Button>
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setLinkTarget(ip); }}>
+                    <Server className="h-3.5 w-3.5 mr-1.5" /> Link to Server
+                  </Button>
                   <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setDeleteTarget(ip); }}>
                     <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Remove
                   </Button>
@@ -571,6 +576,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
 
       <EditIPDialog device={editDevice} open={!!editDevice} onOpenChange={(open) => { if (!open) setEditDevice(null); }} onSaved={fetchIPs} />
       <DeleteIPDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)} deviceName={deleteTarget?.name ?? ""} ipAddress={deleteTarget?.ip_address ?? ""} onConfirm={handleDeleteConfirm} />
+      <LinkToServerDialog open={!!linkTarget} onOpenChange={(open) => !open && setLinkTarget(null)} deviceId={linkTarget?.id ?? ""} deviceName={linkTarget?.name ?? ""} onLinked={fetchIPs} />
     </div>
   );
 };
