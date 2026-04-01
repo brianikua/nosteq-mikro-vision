@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, LogOut, Settings, Users, FileText, Server, KeyRound, Monitor } from "lucide-react";
+import { ArrowLeft, LogOut, Settings, Users, FileText, Server, Monitor } from "lucide-react";
 import { UserManagement } from "@/components/dashboard/UserManagement";
 import { ChangelogTab } from "@/components/dashboard/ChangelogTab";
 import { SystemHealthTab } from "@/components/dashboard/SystemHealthTab";
@@ -46,33 +46,29 @@ const AdminPanel = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-border/50 bg-card/30 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Settings className="h-7 w-7 text-primary" />
-              <div>
-                <h1 className="text-xl font-bold">Admin Panel</h1>
-                <p className="text-xs text-muted-foreground">System Management & Administration</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Dashboard
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
+      <header className="h-[60px] flex items-center justify-between px-6 border-b border-border/50 bg-background/95 backdrop-blur-xl sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <Settings className="h-5 w-5 text-primary" />
+          <div>
+            <h1 className="text-base font-semibold text-foreground">Admin Panel</h1>
+            <p className="text-[11px] text-muted-foreground">System Management & Administration</p>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-8 text-xs border-border/50" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+            Dashboard
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-destructive" onClick={handleSignOut}>
+            <LogOut className="h-3.5 w-3.5 mr-1.5" />
+            Sign Out
+          </Button>
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-6">
+      <main className="flex-1 p-4 md:p-6">
         <Tabs defaultValue="users" className="space-y-4">
-          <TabsList className="bg-card border border-border/50 flex-wrap">
+          <TabsList className="glass">
             {isSuperadmin && (
               <TabsTrigger value="users" className="flex items-center gap-1.5">
                 <Users className="h-4 w-4" /> Users
