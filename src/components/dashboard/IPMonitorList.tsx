@@ -561,6 +561,9 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setEditDevice(ip); }}>
                     <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
                   </Button>
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setLinkTarget(ip); }}>
+                    <Server className="h-3.5 w-3.5 mr-1.5" /> Link to Server
+                  </Button>
                   <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setDeleteTarget(ip); }}>
                     <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Remove
                   </Button>
