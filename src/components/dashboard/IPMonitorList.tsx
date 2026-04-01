@@ -60,6 +60,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editDevice, setEditDevice] = useState<MonitoredIP | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MonitoredIP | null>(null);
+  const [linkTarget, setLinkTarget] = useState<MonitoredIP | null>(null);
 
   // Search, filter, sort
   const [searchQuery, setSearchQuery] = useState("");
