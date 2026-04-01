@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Loader2, Wifi, Trash2, Shield, Clock, ChevronDown, Globe, Pencil,
   Search, ArrowUpDown, Download, RefreshCw, ShieldCheck, BellOff, StickyNote,
-  Activity,
+  Activity, Server,
 } from "lucide-react";
 import { EditIPDialog } from "./EditIPDialog";
 import { DeleteIPDialog } from "./DeleteIPDialog";
