@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Plus, LogOut, Globe, Shield, Bell, Settings, BarChart3, List, Monitor } from "lucide-react";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { RefreshCw, Plus, List, Monitor, Bell, Search } from "lucide-react";
 import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { IPServerView } from "@/components/dashboard/IPServerView";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
@@ -11,11 +11,21 @@ import { IPReputationTab } from "@/components/dashboard/IPReputationTab";
 import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab";
 import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
 import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
-import { toast } from "sonner";
 import { UptimeReportTab } from "@/components/dashboard/UptimeReportTab";
+import { AppSidebar } from "@/components/dashboard/AppSidebar";
+import { toast } from "sonner";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { UpdateBanner } from "@/components/dashboard/UpdateBanner";
 import { VersionFooter } from "@/components/dashboard/VersionFooter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+
+const pageTitles: Record<string, { title: string; subtitle: string }> = {
+  monitor: { title: "Dashboard", subtitle: "Real-time IP monitoring & status" },
+  reputation: { title: "Blacklist Check", subtitle: "IP reputation & blacklist intelligence" },
+  uptime: { title: "Uptime Report", subtitle: "Historical uptime analytics & trends" },
+  notifications: { title: "Notifications", subtitle: "Alert channels & notification settings" },
+};
 
 const Dashboard = () => {
   useAutoLogout();
@@ -25,6 +35,7 @@ const Dashboard = () => {
   const [showAddIP, setShowAddIP] = useState(false);
   const [isAdminOrAbove, setIsAdminOrAbove] = useState(false);
   const [viewMode, setViewMode] = useState<"flat" | "server">("flat");
+  const [activeTab, setActiveTab] = useState("monitor");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -61,117 +72,108 @@ const Dashboard = () => {
     toast.info("Refreshing...");
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
-
   if (!user) return null;
 
+  const currentPage = pageTitles[activeTab] || pageTitles.monitor;
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-border/50 bg-card/30 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          isAdminOrAbove={isAdminOrAbove}
+          userEmail={user.email}
+        />
+
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Top Header Bar */}
+          <header className="h-[60px] flex items-center justify-between px-4 border-b border-border/50 bg-background/95 backdrop-blur-xl sticky top-0 z-50">
             <div className="flex items-center gap-3">
-              <Globe className="h-8 w-8 text-primary" />
+              <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <div>
-                <h1 className="text-2xl font-bold">Nosteq IP Monitor</h1>
-                <p className="text-sm text-muted-foreground">Uptime & Blacklist Intelligence</p>
+                <h1 className="text-base font-semibold text-foreground">{currentPage.title}</h1>
+                <p className="text-[11px] text-muted-foreground">{currentPage.subtitle}</p>
               </div>
             </div>
+
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh}>
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" className="h-8 text-xs border-border/50 hover:border-primary/50" onClick={handleRefresh}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 Refresh
               </Button>
-              <Button variant="default" size="sm" onClick={() => setShowAddIP(true)}>
-                <Plus className="h-4 w-4 mr-2" />
+              <Button size="sm" className="h-8 text-xs gradient-primary text-primary-foreground hover:opacity-90" onClick={() => setShowAddIP(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
                 Add IP
               </Button>
-              {isAdminOrAbove && (
-                <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Admin
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
             </div>
-          </div>
-        </div>
-      </header>
+          </header>
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <UpdateBanner />
-        <Tabs defaultValue="monitor" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <TabsList className="bg-card border border-border/50">
-              <TabsTrigger value="monitor" className="flex items-center gap-2">
-                <Globe className="h-4 w-4" /> IP Monitor
-              </TabsTrigger>
-              <TabsTrigger value="reputation" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" /> Blacklist Check
-              </TabsTrigger>
-              <TabsTrigger value="notifications" className="flex items-center gap-2">
-                <Bell className="h-4 w-4" /> Notifications
-              </TabsTrigger>
-              <TabsTrigger value="uptime" className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" /> Uptime Report
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          {/* Main Content */}
+          <main className="flex-1 p-4 md:p-6 overflow-auto animate-in fade-in duration-200">
+            <UpdateBanner />
 
-          <TabsContent value="monitor">
-            <div className="flex items-center gap-2 mb-3">
-              <Button variant={viewMode === "flat" ? "default" : "outline"} size="sm" className="h-8 text-xs gap-1.5" onClick={() => setViewMode("flat")}>
-                <List className="h-3.5 w-3.5" /> Flat List
-              </Button>
-              <Button variant={viewMode === "server" ? "default" : "outline"} size="sm" className="h-8 text-xs gap-1.5" onClick={() => setViewMode("server")}>
-                <Monitor className="h-3.5 w-3.5" /> Server View
-              </Button>
-            </div>
-            {viewMode === "flat" ? (
-              <IPMonitorList refreshTrigger={refreshTrigger} />
-            ) : (
-              <IPServerView refreshTrigger={refreshTrigger} />
+            {/* Monitor Tab */}
+            {activeTab === "monitor" && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={viewMode === "flat" ? "default" : "outline"}
+                    size="sm"
+                    className={cn("h-8 text-xs gap-1.5", viewMode === "flat" && "gradient-primary text-primary-foreground")}
+                    onClick={() => setViewMode("flat")}
+                  >
+                    <List className="h-3.5 w-3.5" /> Flat List
+                  </Button>
+                  <Button
+                    variant={viewMode === "server" ? "default" : "outline"}
+                    size="sm"
+                    className={cn("h-8 text-xs gap-1.5", viewMode === "server" && "gradient-primary text-primary-foreground")}
+                    onClick={() => setViewMode("server")}
+                  >
+                    <Monitor className="h-3.5 w-3.5" /> Server View
+                  </Button>
+                </div>
+                {viewMode === "flat" ? (
+                  <IPMonitorList refreshTrigger={refreshTrigger} />
+                ) : (
+                  <IPServerView refreshTrigger={refreshTrigger} />
+                )}
+              </div>
             )}
-          </TabsContent>
 
-          <TabsContent value="reputation">
-            <IPReputationTab />
-          </TabsContent>
+            {/* Blacklist Check Tab */}
+            {activeTab === "reputation" && <IPReputationTab />}
 
-          <TabsContent value="notifications">
-            <Tabs defaultValue="telegram" className="space-y-4">
-              <TabsList className="bg-secondary/50">
-                <TabsTrigger value="telegram">Telegram</TabsTrigger>
-                <TabsTrigger value="sms">SMS</TabsTrigger>
-                <TabsTrigger value="log">Notification Log</TabsTrigger>
-              </TabsList>
-              <TabsContent value="telegram">
-                <TelegramSettingsTab />
-              </TabsContent>
-              <TabsContent value="sms">
-                <SmsSettingsTab />
-              </TabsContent>
-              <TabsContent value="log">
-                <NotificationLogTab />
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
+            {/* Uptime Report Tab */}
+            {activeTab === "uptime" && <UptimeReportTab />}
 
-          <TabsContent value="uptime">
-            <UptimeReportTab />
-          </TabsContent>
-        </Tabs>
-      </main>
+            {/* Notifications Tab */}
+            {activeTab === "notifications" && (
+              <Tabs defaultValue="telegram" className="space-y-4">
+                <TabsList className="glass">
+                  <TabsTrigger value="telegram">Telegram</TabsTrigger>
+                  <TabsTrigger value="sms">SMS</TabsTrigger>
+                  <TabsTrigger value="log">Notification Log</TabsTrigger>
+                </TabsList>
+                <TabsContent value="telegram">
+                  <TelegramSettingsTab />
+                </TabsContent>
+                <TabsContent value="sms">
+                  <SmsSettingsTab />
+                </TabsContent>
+                <TabsContent value="log">
+                  <NotificationLogTab />
+                </TabsContent>
+              </Tabs>
+            )}
+          </main>
 
+          <VersionFooter />
+        </div>
+      </div>
       <AddIPDialog open={showAddIP} onOpenChange={setShowAddIP} onSaved={handleRefresh} />
-      <VersionFooter />
-    </div>
+    </SidebarProvider>
   );
 };
 
