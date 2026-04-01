@@ -576,6 +576,7 @@ export const IPMonitorList = ({ refreshTrigger }: IPMonitorListProps) => {
 
       <EditIPDialog device={editDevice} open={!!editDevice} onOpenChange={(open) => { if (!open) setEditDevice(null); }} onSaved={fetchIPs} />
       <DeleteIPDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)} deviceName={deleteTarget?.name ?? ""} ipAddress={deleteTarget?.ip_address ?? ""} onConfirm={handleDeleteConfirm} />
+      <LinkToServerDialog open={!!linkTarget} onOpenChange={(open) => !open && setLinkTarget(null)} deviceId={linkTarget?.id ?? ""} deviceName={linkTarget?.name ?? ""} onLinked={fetchIPs} />
     </div>
   );
 };
