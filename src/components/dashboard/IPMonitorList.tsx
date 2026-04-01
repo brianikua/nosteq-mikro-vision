@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { EditIPDialog } from "./EditIPDialog";
 import { DeleteIPDialog } from "./DeleteIPDialog";
+import { LinkToServerDialog } from "./LinkToServerDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
