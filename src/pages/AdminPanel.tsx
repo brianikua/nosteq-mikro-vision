@@ -88,6 +88,11 @@ const AdminPanel = () => {
                 <Monitor className="h-4 w-4" /> Servers
               </TabsTrigger>
             )}
+            {isSuperadmin && (
+              <TabsTrigger value="settings" className="flex items-center gap-1.5">
+                <SlidersHorizontal className="h-4 w-4" /> Settings
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {isSuperadmin && (
