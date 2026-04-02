@@ -95,7 +95,10 @@ export type Database = {
         Row: {
           check_interval_minutes: number | null
           check_ports: number[] | null
+          consecutive_failures: number
           created_at: string
+          down_since: string | null
+          escalation_sent: boolean
           id: string
           ip_address: string
           ip_label: string | null
@@ -113,7 +116,10 @@ export type Database = {
         Insert: {
           check_interval_minutes?: number | null
           check_ports?: number[] | null
+          consecutive_failures?: number
           created_at?: string
+          down_since?: string | null
+          escalation_sent?: boolean
           id?: string
           ip_address: string
           ip_label?: string | null
@@ -131,7 +137,10 @@ export type Database = {
         Update: {
           check_interval_minutes?: number | null
           check_ports?: number[] | null
+          consecutive_failures?: number
           created_at?: string
+          down_since?: string | null
+          escalation_sent?: boolean
           id?: string
           ip_address?: string
           ip_label?: string | null
@@ -565,6 +574,39 @@ export type Database = {
           updated_at?: string | null
           webhook_method?: string
           webhook_url?: string
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          alert_threshold_latency_ms: number
+          alert_threshold_packet_loss: number
+          created_at: string
+          default_check_interval: number
+          down_confirmation_count: number
+          escalation_timer_minutes: number
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          alert_threshold_latency_ms?: number
+          alert_threshold_packet_loss?: number
+          created_at?: string
+          default_check_interval?: number
+          down_confirmation_count?: number
+          escalation_timer_minutes?: number
+          id: number
+          updated_at?: string
+        }
+        Update: {
+          alert_threshold_latency_ms?: number
+          alert_threshold_packet_loss?: number
+          created_at?: string
+          default_check_interval?: number
+          down_confirmation_count?: number
+          escalation_timer_minutes?: number
+          id?: number
+          updated_at?: string
         }
         Relationships: []
       }
