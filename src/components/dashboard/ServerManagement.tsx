@@ -120,15 +120,33 @@ export const ServerManagement = () => {
         </CardHeader>
         <CardContent className="px-4 pb-4">
           {groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No groups yet. Create groups to organize your servers.</p>
+            <p className="text-sm text-muted-foreground">No groups yet. Create groups to organize your servers by backbone, CPE, business links, etc.</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {groups.map(g => (
-                <Badge key={g.id} variant="outline" className="gap-1.5 py-1 px-3">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: g.color }} />
-                  {g.name}
-                </Badge>
-              ))}
+            <div className="space-y-2">
+              {groups.map(g => {
+                const serverCount = servers.filter(s => s.group_id === g.id).length;
+                return (
+                  <div key={g.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-border/50 bg-card/30">
+                    <span className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                    <span className="text-sm font-medium flex-1">{g.name}</span>
+                    <Badge variant="secondary" className="text-[10px]">{serverCount} server{serverCount !== 1 ? "s" : ""}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={async () => {
+                        // Unlink servers from group first
+                        await supabase.from("servers").update({ group_id: null }).eq("group_id", g.id);
+                        const { error } = await supabase.from("ip_groups").delete().eq("id", g.id);
+                        if (error) toast.error("Failed to delete group");
+                        else { toast.success("Group deleted"); fetchData(); }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
