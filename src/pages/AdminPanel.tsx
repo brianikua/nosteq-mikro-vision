@@ -111,6 +111,12 @@ const AdminPanel = () => {
               <ServerManagement />
             </TabsContent>
           )}
+
+          {isSuperadmin && (
+            <TabsContent value="settings">
+              <AdminSettingsTab />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
 
