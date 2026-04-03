@@ -1,18 +1,12 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Globe, Shield, Bell, BarChart3, Settings, LogOut, User,
+  Monitor, Server, AlertTriangle, Layout,
 } from "lucide-react";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarFooter,
-  SidebarHeader,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter,
+  SidebarHeader, useSidebar,
 } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -25,10 +19,13 @@ interface AppSidebarProps {
 }
 
 const navItems = [
-  { id: "monitor", label: "Dashboard", icon: Globe },
-  { id: "reputation", label: "Blacklist Check", icon: Shield },
-  { id: "uptime", label: "Uptime Report", icon: BarChart3 },
-  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "monitor", label: "Dashboard", icon: Layout, route: "/dashboard" },
+  { id: "devices", label: "Devices", icon: Monitor, route: "/devices" },
+  { id: "ip-space", label: "IP Space", icon: Globe, route: "/dashboard" },
+  { id: "reputation", label: "Blacklist Center", icon: Shield, route: "/dashboard" },
+  { id: "uptime", label: "Uptime Report", icon: BarChart3, route: "/dashboard" },
+  { id: "abuse", label: "Abuse Reports", icon: AlertTriangle, route: "/abuse" },
+  { id: "notifications", label: "Notifications", icon: Bell, route: "/dashboard" },
 ];
 
 export function AppSidebar({ activeTab, onTabChange, isAdminOrAbove, userEmail }: AppSidebarProps) {
@@ -39,6 +36,20 @@ export function AppSidebar({ activeTab, onTabChange, isAdminOrAbove, userEmail }
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
+  };
+
+  const handleNavClick = (item: typeof navItems[0]) => {
+    // For items that are standalone pages, navigate directly
+    if (item.id === "devices" || item.id === "abuse") {
+      navigate(item.route);
+      onTabChange(item.id);
+    } else {
+      // For dashboard tabs, navigate to dashboard and set active tab
+      if (window.location.pathname !== "/dashboard") {
+        navigate("/dashboard");
+      }
+      onTabChange(item.id);
+    }
   };
 
   return (
@@ -66,7 +77,7 @@ export function AppSidebar({ activeTab, onTabChange, isAdminOrAbove, userEmail }
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
-                      onClick={() => onTabChange(item.id)}
+                      onClick={() => handleNavClick(item)}
                       tooltip={item.label}
                       className={cn(
                         "h-10 gap-3 rounded-lg transition-all duration-200",
