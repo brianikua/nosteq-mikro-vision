@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { RefreshCw, Plus, List, Monitor, Bell, Search } from "lucide-react";
+import { RefreshCw, Plus, List, Monitor, Bell } from "lucide-react";
 import { IPMonitorList } from "@/components/dashboard/IPMonitorList";
 import { IPServerView } from "@/components/dashboard/IPServerView";
 import { AddIPDialog } from "@/components/dashboard/AddIPDialog";
@@ -13,6 +13,8 @@ import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
 import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
 import { UptimeReportTab } from "@/components/dashboard/UptimeReportTab";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
+import { SetupWizard } from "@/components/setup/SetupWizard";
+import { useHostingMode } from "@/hooks/use-hosting-mode";
 import { toast } from "sonner";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { UpdateBanner } from "@/components/dashboard/UpdateBanner";
@@ -22,7 +24,8 @@ import { cn } from "@/lib/utils";
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
   monitor: { title: "Dashboard", subtitle: "Real-time IP monitoring & status" },
-  reputation: { title: "Blacklist Check", subtitle: "IP reputation & blacklist intelligence" },
+  "ip-space": { title: "IP Space", subtitle: "All monitored IPs across devices" },
+  reputation: { title: "Blacklist Center", subtitle: "IP reputation & blacklist intelligence" },
   uptime: { title: "Uptime Report", subtitle: "Historical uptime analytics & trends" },
   notifications: { title: "Notifications", subtitle: "Alert channels & notification settings" },
 };
@@ -30,12 +33,14 @@ const pageTitles: Record<string, { title: string; subtitle: string }> = {
 const Dashboard = () => {
   useAutoLogout();
   const navigate = useNavigate();
+  const { setupComplete, loading: configLoading, refreshConfig } = useHostingMode();
   const [user, setUser] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [showAddIP, setShowAddIP] = useState(false);
   const [isAdminOrAbove, setIsAdminOrAbove] = useState(false);
   const [viewMode, setViewMode] = useState<"flat" | "server">("flat");
   const [activeTab, setActiveTab] = useState("monitor");
+  const [showSetup, setShowSetup] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -67,12 +72,22 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  useEffect(() => {
+    if (!configLoading && !setupComplete && user) {
+      setShowSetup(true);
+    }
+  }, [configLoading, setupComplete, user]);
+
   const handleRefresh = () => {
     setRefreshTrigger((prev) => !prev);
     toast.info("Refreshing...");
   };
 
   if (!user) return null;
+
+  if (showSetup) {
+    return <SetupWizard onComplete={() => { setShowSetup(false); refreshConfig(); }} />;
+  }
 
   const currentPage = pageTitles[activeTab] || pageTitles.monitor;
 
@@ -87,7 +102,6 @@ const Dashboard = () => {
         />
 
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Header Bar */}
           <header className="h-[60px] flex items-center justify-between px-4 border-b border-border/50 bg-background/95 backdrop-blur-xl sticky top-0 z-50">
             <div className="flex items-center gap-3">
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
@@ -102,18 +116,18 @@ const Dashboard = () => {
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 Refresh
               </Button>
-              <Button size="sm" className="h-8 text-xs gradient-primary text-primary-foreground hover:opacity-90" onClick={() => setShowAddIP(true)}>
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                Add IP
-              </Button>
+              {activeTab === "monitor" && (
+                <Button size="sm" className="h-8 text-xs gradient-primary text-primary-foreground hover:opacity-90" onClick={() => setShowAddIP(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                  Add IP
+                </Button>
+              )}
             </div>
           </header>
 
-          {/* Main Content */}
           <main className="flex-1 p-4 md:p-6 overflow-auto animate-in fade-in duration-200">
             <UpdateBanner />
 
-            {/* Monitor Tab */}
             {activeTab === "monitor" && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -142,13 +156,16 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* Blacklist Check Tab */}
-            {activeTab === "reputation" && <IPReputationTab />}
+            {activeTab === "ip-space" && (
+              <div className="text-center py-16">
+                <p className="text-muted-foreground">IP Space view coming soon — use Devices page for full IP documentation</p>
+                <Button className="mt-4" variant="outline" onClick={() => navigate("/devices")}>Go to Devices</Button>
+              </div>
+            )}
 
-            {/* Uptime Report Tab */}
+            {activeTab === "reputation" && <IPReputationTab />}
             {activeTab === "uptime" && <UptimeReportTab />}
 
-            {/* Notifications Tab */}
             {activeTab === "notifications" && (
               <Tabs defaultValue="telegram" className="space-y-4">
                 <TabsList className="glass">
@@ -156,15 +173,9 @@ const Dashboard = () => {
                   <TabsTrigger value="sms">SMS</TabsTrigger>
                   <TabsTrigger value="log">Notification Log</TabsTrigger>
                 </TabsList>
-                <TabsContent value="telegram">
-                  <TelegramSettingsTab />
-                </TabsContent>
-                <TabsContent value="sms">
-                  <SmsSettingsTab />
-                </TabsContent>
-                <TabsContent value="log">
-                  <NotificationLogTab />
-                </TabsContent>
+                <TabsContent value="telegram"><TelegramSettingsTab /></TabsContent>
+                <TabsContent value="sms"><SmsSettingsTab /></TabsContent>
+                <TabsContent value="log"><NotificationLogTab /></TabsContent>
               </Tabs>
             )}
           </main>

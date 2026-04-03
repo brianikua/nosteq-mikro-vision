@@ -14,6 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      abuse_checklist_progress: {
+        Row: {
+          abuse_report_id: string
+          completed: boolean | null
+          completed_at: string | null
+          completed_by: string | null
+          id: string
+          step_label: string
+        }
+        Insert: {
+          abuse_report_id: string
+          completed?: boolean | null
+          completed_at?: string | null
+          completed_by?: string | null
+          id?: string
+          step_label: string
+        }
+        Update: {
+          abuse_report_id?: string
+          completed?: boolean | null
+          completed_at?: string | null
+          completed_by?: string | null
+          id?: string
+          step_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abuse_checklist_progress_abuse_report_id_fkey"
+            columns: ["abuse_report_id"]
+            isOneToOne: false
+            referencedRelation: "abuse_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      abuse_reports: {
+        Row: {
+          abuse_type: string
+          action_taken: string | null
+          created_at: string | null
+          device_id: string | null
+          id: string
+          ip_assignment_id: string | null
+          provider: string | null
+          raw_email_text: string | null
+          report_date: string | null
+          source_ip: string | null
+          status: string | null
+          strike_number: number | null
+        }
+        Insert: {
+          abuse_type: string
+          action_taken?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          ip_assignment_id?: string | null
+          provider?: string | null
+          raw_email_text?: string | null
+          report_date?: string | null
+          source_ip?: string | null
+          status?: string | null
+          strike_number?: number | null
+        }
+        Update: {
+          abuse_type?: string
+          action_taken?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          ip_assignment_id?: string | null
+          provider?: string | null
+          raw_email_text?: string | null
+          report_date?: string | null
+          source_ip?: string | null
+          status?: string | null
+          strike_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abuse_reports_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abuse_reports_ip_assignment_id_fkey"
+            columns: ["ip_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "ip_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blacklist_history: {
         Row: {
           confidence: number | null
@@ -91,14 +186,129 @@ export type Database = {
           },
         ]
       }
+      change_log: {
+        Row: {
+          change_type: string
+          changed_by: string | null
+          created_at: string | null
+          device_id: string | null
+          field_name: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          record_id: string | null
+          table_name: string
+        }
+        Insert: {
+          change_type: string
+          changed_by?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          record_id?: string | null
+          table_name: string
+        }
+        Update: {
+          change_type?: string
+          changed_by?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          record_id?: string | null
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_log_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_links: {
+        Row: {
+          created_at: string | null
+          device_a_id: string | null
+          device_b_id: string | null
+          id: string
+          interface_a_id: string | null
+          interface_b_id: string | null
+          link_type: string | null
+          notes: string | null
+          speed: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_a_id?: string | null
+          device_b_id?: string | null
+          id?: string
+          interface_a_id?: string | null
+          interface_b_id?: string | null
+          link_type?: string | null
+          notes?: string | null
+          speed?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_a_id?: string | null
+          device_b_id?: string | null
+          id?: string
+          interface_a_id?: string | null
+          interface_b_id?: string | null
+          link_type?: string | null
+          notes?: string | null
+          speed?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_links_device_a_id_fkey"
+            columns: ["device_a_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_links_device_b_id_fkey"
+            columns: ["device_b_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_links_interface_a_id_fkey"
+            columns: ["interface_a_id"]
+            isOneToOne: false
+            referencedRelation: "interfaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_links_interface_b_id_fkey"
+            columns: ["interface_b_id"]
+            isOneToOne: false
+            referencedRelation: "interfaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       devices: {
         Row: {
+          added_by: string | null
           check_interval_minutes: number | null
           check_ports: number[] | null
           consecutive_failures: number
           created_at: string
           down_since: string | null
           escalation_sent: boolean
+          gps_lat: number | null
+          gps_lng: number | null
           id: string
           ip_address: string
           ip_label: string | null
@@ -107,19 +317,31 @@ export type Database = {
           is_up: boolean | null
           last_latency_ms: number | null
           last_ping_at: string | null
+          model: string | null
           monitor_enabled: boolean | null
           name: string
+          noc_notes: string | null
           notify_number: string[] | null
+          os_version: string | null
+          serial_number: string | null
           server_id: string | null
+          site_address: string | null
+          site_name: string | null
+          status: string | null
+          type: string | null
           updated_at: string
+          vpn_site_id: string | null
         }
         Insert: {
+          added_by?: string | null
           check_interval_minutes?: number | null
           check_ports?: number[] | null
           consecutive_failures?: number
           created_at?: string
           down_since?: string | null
           escalation_sent?: boolean
+          gps_lat?: number | null
+          gps_lng?: number | null
           id?: string
           ip_address: string
           ip_label?: string | null
@@ -128,19 +350,31 @@ export type Database = {
           is_up?: boolean | null
           last_latency_ms?: number | null
           last_ping_at?: string | null
+          model?: string | null
           monitor_enabled?: boolean | null
           name: string
+          noc_notes?: string | null
           notify_number?: string[] | null
+          os_version?: string | null
+          serial_number?: string | null
           server_id?: string | null
+          site_address?: string | null
+          site_name?: string | null
+          status?: string | null
+          type?: string | null
           updated_at?: string
+          vpn_site_id?: string | null
         }
         Update: {
+          added_by?: string | null
           check_interval_minutes?: number | null
           check_ports?: number[] | null
           consecutive_failures?: number
           created_at?: string
           down_since?: string | null
           escalation_sent?: boolean
+          gps_lat?: number | null
+          gps_lng?: number | null
           id?: string
           ip_address?: string
           ip_label?: string | null
@@ -149,11 +383,20 @@ export type Database = {
           is_up?: boolean | null
           last_latency_ms?: number | null
           last_ping_at?: string | null
+          model?: string | null
           monitor_enabled?: boolean | null
           name?: string
+          noc_notes?: string | null
           notify_number?: string[] | null
+          os_version?: string | null
+          serial_number?: string | null
           server_id?: string | null
+          site_address?: string | null
+          site_name?: string | null
+          status?: string | null
+          type?: string | null
           updated_at?: string
+          vpn_site_id?: string | null
         }
         Relationships: [
           {
@@ -163,24 +406,235 @@ export type Database = {
             referencedRelation: "servers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "devices_vpn_site_id_fkey"
+            columns: ["vpn_site_id"]
+            isOneToOne: false
+            referencedRelation: "vpn_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interfaces: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          device_id: string
+          id: string
+          is_public: boolean | null
+          link_status: string | null
+          mac_address: string | null
+          monitor_uptime: boolean | null
+          name: string
+          notes: string | null
+          parent_interface_id: string | null
+          sort_order: number | null
+          speed: string | null
+          type: string | null
+          vlan_id: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          device_id: string
+          id?: string
+          is_public?: boolean | null
+          link_status?: string | null
+          mac_address?: string | null
+          monitor_uptime?: boolean | null
+          name: string
+          notes?: string | null
+          parent_interface_id?: string | null
+          sort_order?: number | null
+          speed?: string | null
+          type?: string | null
+          vlan_id?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          device_id?: string
+          id?: string
+          is_public?: boolean | null
+          link_status?: string | null
+          mac_address?: string | null
+          monitor_uptime?: boolean | null
+          name?: string
+          notes?: string | null
+          parent_interface_id?: string | null
+          sort_order?: number | null
+          speed?: string | null
+          type?: string | null
+          vlan_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interfaces_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interfaces_parent_interface_id_fkey"
+            columns: ["parent_interface_id"]
+            isOneToOne: false
+            referencedRelation: "interfaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ip_assignments: {
+        Row: {
+          blacklist_count: number | null
+          created_at: string | null
+          device_id: string
+          id: string
+          interface_id: string
+          ip_address: string
+          ip_only: string | null
+          ip_type: string | null
+          is_public: boolean | null
+          last_ping_at: string | null
+          last_ping_ms: number | null
+          last_status: string | null
+          monitor_blacklist: boolean | null
+          monitor_uptime: boolean | null
+          notes: string | null
+          prefix_length: number | null
+          reachability_type: string | null
+          role: string | null
+          uptime_7d: number | null
+        }
+        Insert: {
+          blacklist_count?: number | null
+          created_at?: string | null
+          device_id: string
+          id?: string
+          interface_id: string
+          ip_address: string
+          ip_only?: string | null
+          ip_type?: string | null
+          is_public?: boolean | null
+          last_ping_at?: string | null
+          last_ping_ms?: number | null
+          last_status?: string | null
+          monitor_blacklist?: boolean | null
+          monitor_uptime?: boolean | null
+          notes?: string | null
+          prefix_length?: number | null
+          reachability_type?: string | null
+          role?: string | null
+          uptime_7d?: number | null
+        }
+        Update: {
+          blacklist_count?: number | null
+          created_at?: string | null
+          device_id?: string
+          id?: string
+          interface_id?: string
+          ip_address?: string
+          ip_only?: string | null
+          ip_type?: string | null
+          is_public?: boolean | null
+          last_ping_at?: string | null
+          last_ping_ms?: number | null
+          last_status?: string | null
+          monitor_blacklist?: boolean | null
+          monitor_uptime?: boolean | null
+          notes?: string | null
+          prefix_length?: number | null
+          reachability_type?: string | null
+          role?: string | null
+          uptime_7d?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ip_assignments_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ip_assignments_interface_id_fkey"
+            columns: ["interface_id"]
+            isOneToOne: false
+            referencedRelation: "interfaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ip_downtime_events: {
+        Row: {
+          created_at: string | null
+          device_id: string | null
+          down_at: string
+          duration_minutes: number | null
+          escalated: boolean | null
+          id: string
+          ip_assignment_id: string | null
+          notified: boolean | null
+          recovered_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_id?: string | null
+          down_at: string
+          duration_minutes?: number | null
+          escalated?: boolean | null
+          id?: string
+          ip_assignment_id?: string | null
+          notified?: boolean | null
+          recovered_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string | null
+          down_at?: string
+          duration_minutes?: number | null
+          escalated?: boolean | null
+          id?: string
+          ip_assignment_id?: string | null
+          notified?: boolean | null
+          recovered_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ip_downtime_events_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ip_downtime_events_ip_assignment_id_fkey"
+            columns: ["ip_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "ip_assignments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ip_groups: {
         Row: {
           color: string
           created_at: string
+          description: string | null
           id: string
           name: string
         }
         Insert: {
           color?: string
           created_at?: string
+          description?: string | null
           id?: string
           name: string
         }
         Update: {
           color?: string
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
         }
@@ -577,6 +1031,65 @@ export type Database = {
         }
         Relationships: []
       }
+      static_routes: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          destination: string
+          device_id: string
+          distance: number | null
+          gateway: string
+          id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          destination: string
+          device_id: string
+          distance?: number | null
+          gateway: string
+          id?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          destination?: string
+          device_id?: string
+          distance?: number | null
+          gateway?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "static_routes_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_config: {
+        Row: {
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           alert_threshold_latency_ms: number
@@ -673,6 +1186,152 @@ export type Database = {
         }
         Relationships: []
       }
+      vlans: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          device_id: string
+          dhcp_enabled: boolean | null
+          dhcp_end: string | null
+          dhcp_start: string | null
+          gateway: string | null
+          id: string
+          interface_id: string | null
+          name: string | null
+          notes: string | null
+          purpose: string | null
+          subnet: string | null
+          vlan_id: number
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          device_id: string
+          dhcp_enabled?: boolean | null
+          dhcp_end?: string | null
+          dhcp_start?: string | null
+          gateway?: string | null
+          id?: string
+          interface_id?: string | null
+          name?: string | null
+          notes?: string | null
+          purpose?: string | null
+          subnet?: string | null
+          vlan_id: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          device_id?: string
+          dhcp_enabled?: boolean | null
+          dhcp_end?: string | null
+          dhcp_start?: string | null
+          gateway?: string | null
+          id?: string
+          interface_id?: string | null
+          name?: string | null
+          notes?: string | null
+          purpose?: string | null
+          subnet?: string | null
+          vlan_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vlans_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vlans_interface_id_fkey"
+            columns: ["interface_id"]
+            isOneToOne: false
+            referencedRelation: "interfaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vpn_downtime_events: {
+        Row: {
+          affected_ip_count: number | null
+          created_at: string | null
+          down_at: string
+          duration_minutes: number | null
+          id: string
+          notified: boolean | null
+          recovered_at: string | null
+          vpn_site_id: string | null
+        }
+        Insert: {
+          affected_ip_count?: number | null
+          created_at?: string | null
+          down_at: string
+          duration_minutes?: number | null
+          id?: string
+          notified?: boolean | null
+          recovered_at?: string | null
+          vpn_site_id?: string | null
+        }
+        Update: {
+          affected_ip_count?: number | null
+          created_at?: string | null
+          down_at?: string
+          duration_minutes?: number | null
+          id?: string
+          notified?: boolean | null
+          recovered_at?: string | null
+          vpn_site_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vpn_downtime_events_vpn_site_id_fkey"
+            columns: ["vpn_site_id"]
+            isOneToOne: false
+            referencedRelation: "vpn_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vpn_sites: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          last_checked: string | null
+          last_status: string | null
+          notes: string | null
+          site_name: string
+          tunnel_interface: string | null
+          vpn_gateway_ip: string
+          vpn_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_checked?: string | null
+          last_status?: string | null
+          notes?: string | null
+          site_name: string
+          tunnel_interface?: string | null
+          vpn_gateway_ip: string
+          vpn_type?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_checked?: string | null
+          last_status?: string | null
+          notes?: string | null
+          site_name?: string
+          tunnel_interface?: string | null
+          vpn_gateway_ip?: string
+          vpn_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -689,6 +1348,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "viewer" | "superadmin"
       scan_status: "clean" | "listed" | "error"
+      vpn_type: "WireGuard" | "OpenVPN" | "IPSec" | "SSTP" | "L2TP" | "Other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -818,6 +1478,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "viewer", "superadmin"],
       scan_status: ["clean", "listed", "error"],
+      vpn_type: ["WireGuard", "OpenVPN", "IPSec", "SSTP", "L2TP", "Other"],
     },
   },
 } as const
