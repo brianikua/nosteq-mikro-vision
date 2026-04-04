@@ -9,7 +9,9 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Devices from "./pages/Devices";
 import DeviceDetail from "./pages/DeviceDetail";
-import AbuseReports from "./pages/AbuseReports";
+import IPIntelligence from "./pages/IPIntelligence";
+import NetworkHealth from "./pages/NetworkHealth";
+import SettingsPage from "./pages/Settings";
 import AdminPanel from "./pages/AdminPanel";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -29,7 +31,9 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/devices" element={<Devices />} />
             <Route path="/devices/:id" element={<DeviceDetail />} />
-            <Route path="/abuse" element={<AbuseReports />} />
+            <Route path="/ip-intelligence" element={<IPIntelligence />} />
+            <Route path="/network-health" element={<NetworkHealth />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -102,13 +102,13 @@ const Devices = () => {
             <div className="flex items-center gap-3">
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <div>
-                <h1 className="text-base font-semibold text-foreground">Devices</h1>
-                <p className="text-[11px] text-muted-foreground">Network hardware documentation & monitoring</p>
+                <h1 className="text-base font-semibold text-foreground">Network Devices</h1>
+                <p className="text-[11px] text-muted-foreground">Gadget documentation & monitoring</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" className="h-8 text-xs gradient-primary text-primary-foreground" onClick={() => setShowAddDevice(true)}>
-                <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Device
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Gadget
               </Button>
             </div>
           </header>
@@ -140,10 +140,10 @@ const Devices = () => {
             ) : filtered.length === 0 ? (
               <div className="text-center py-16">
                 <Server className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No devices yet</h3>
-                <p className="text-sm text-muted-foreground mt-1">Add your first network device to start monitoring</p>
+                <h3 className="text-lg font-semibold text-foreground">No gadgets yet</h3>
+                <p className="text-sm text-muted-foreground mt-1">Add your first network gadget to start monitoring</p>
                 <Button className="mt-4 gradient-primary text-primary-foreground" onClick={() => setShowAddDevice(true)}>
-                  <Plus className="h-4 w-4 mr-2" /> Add Device
+                  <Plus className="h-4 w-4 mr-2" /> Add Gadget
                 </Button>
               </div>
             ) : (
