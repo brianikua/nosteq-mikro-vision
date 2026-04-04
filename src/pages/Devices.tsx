@@ -108,7 +108,7 @@ const Devices = () => {
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" className="h-8 text-xs gradient-primary text-primary-foreground" onClick={() => setShowAddDevice(true)}>
-                <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Device
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Gadget
               </Button>
             </div>
           </header>
