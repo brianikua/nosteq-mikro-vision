@@ -1,7 +1,7 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
-  Globe, Shield, Bell, BarChart3, Settings, LogOut, User,
-  Monitor, Server, AlertTriangle, Layout,
+  Globe, Settings, LogOut, User,
+  Monitor, Layout, Shield, Activity,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -12,45 +12,38 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 interface AppSidebarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
   isAdminOrAbove: boolean;
   userEmail?: string;
 }
 
 const navItems = [
-  { id: "monitor", label: "Dashboard", icon: Layout, route: "/dashboard" },
-  { id: "devices", label: "Devices", icon: Monitor, route: "/devices" },
-  { id: "ip-space", label: "IP Space", icon: Globe, route: "/dashboard" },
-  { id: "reputation", label: "Blacklist Center", icon: Shield, route: "/dashboard" },
-  { id: "uptime", label: "Uptime Report", icon: BarChart3, route: "/dashboard" },
-  { id: "abuse", label: "Abuse Reports", icon: AlertTriangle, route: "/abuse" },
-  { id: "notifications", label: "Notifications", icon: Bell, route: "/dashboard" },
+  { id: "dashboard", label: "Dashboard", icon: Layout, route: "/dashboard" },
+  { id: "devices", label: "Network Devices", icon: Monitor, route: "/devices" },
+  { id: "ip-intelligence", label: "IP Intelligence", icon: Globe, route: "/ip-intelligence" },
+  { id: "network-health", label: "Network Health", icon: Activity, route: "/network-health" },
+  { id: "settings", label: "Settings", icon: Settings, route: "/settings" },
 ];
 
 export function AppSidebar({ activeTab, onTabChange, isAdminOrAbove, userEmail }: AppSidebarProps) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
   };
 
-  const handleNavClick = (item: typeof navItems[0]) => {
-    // For items that are standalone pages, navigate directly
-    if (item.id === "devices" || item.id === "abuse") {
-      navigate(item.route);
-      onTabChange(item.id);
-    } else {
-      // For dashboard tabs, navigate to dashboard and set active tab
-      if (window.location.pathname !== "/dashboard") {
-        navigate("/dashboard");
-      }
-      onTabChange(item.id);
-    }
+  const getActiveId = () => {
+    const path = location.pathname;
+    const match = navItems.find((item) => path.startsWith(item.route));
+    return match?.id || activeTab || "dashboard";
   };
+
+  const currentActive = getActiveId();
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -73,11 +66,16 @@ export function AppSidebar({ activeTab, onTabChange, isAdminOrAbove, userEmail }
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
-                const isActive = activeTab === item.id;
+                // Settings only visible to admin/superadmin
+                if (item.id === "settings" && !isAdminOrAbove) return null;
+                const isActive = currentActive === item.id;
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
-                      onClick={() => handleNavClick(item)}
+                      onClick={() => {
+                        navigate(item.route);
+                        onTabChange?.(item.id);
+                      }}
                       tooltip={item.label}
                       className={cn(
                         "h-10 gap-3 rounded-lg transition-all duration-200",
@@ -97,11 +95,11 @@ export function AppSidebar({ activeTab, onTabChange, isAdminOrAbove, userEmail }
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     onClick={() => navigate("/admin")}
-                    tooltip="Settings"
+                    tooltip="Admin Panel"
                     className="h-10 gap-3 rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all duration-200"
                   >
-                    <Settings className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span className="text-sm">Settings</span>}
+                    <Shield className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span className="text-sm">Admin Panel</span>}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
