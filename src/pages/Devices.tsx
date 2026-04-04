@@ -140,10 +140,10 @@ const Devices = () => {
             ) : filtered.length === 0 ? (
               <div className="text-center py-16">
                 <Server className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No devices yet</h3>
-                <p className="text-sm text-muted-foreground mt-1">Add your first network device to start monitoring</p>
+                <h3 className="text-lg font-semibold text-foreground">No gadgets yet</h3>
+                <p className="text-sm text-muted-foreground mt-1">Add your first network gadget to start monitoring</p>
                 <Button className="mt-4 gradient-primary text-primary-foreground" onClick={() => setShowAddDevice(true)}>
-                  <Plus className="h-4 w-4 mr-2" /> Add Device
+                  <Plus className="h-4 w-4 mr-2" /> Add Gadget
                 </Button>
               </div>
             ) : (
