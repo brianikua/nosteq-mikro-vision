@@ -102,8 +102,8 @@ const Devices = () => {
             <div className="flex items-center gap-3">
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <div>
-                <h1 className="text-base font-semibold text-foreground">Devices</h1>
-                <p className="text-[11px] text-muted-foreground">Network hardware documentation & monitoring</p>
+                <h1 className="text-base font-semibold text-foreground">Network Devices</h1>
+                <p className="text-[11px] text-muted-foreground">Gadget documentation & monitoring</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
