@@ -36,6 +36,9 @@ const DeviceDetail = () => {
   const [nocNotes, setNocNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [bulkOpen, setBulkOpen] = useState(false);
+
+
 
   useEffect(() => {
     const init = async () => {
