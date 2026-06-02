@@ -7,11 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { VersionFooter } from "@/components/dashboard/VersionFooter";
-import { ArrowLeft, Router, Monitor, HardDrive, Radio, Wifi, Cpu, ChevronDown, ChevronRight, Copy, Save, Loader2, Network } from "lucide-react";
+import { ArrowLeft, Router, Monitor, HardDrive, Radio, Wifi, Cpu, ChevronDown, ChevronRight, Copy, Save, Loader2, Network, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { useHostingMode } from "@/hooks/use-hosting-mode";
 import { BulkAddIPsDialog } from "@/components/devices/BulkAddIPsDialog";
+import { EditIPAssignmentDialog } from "@/components/devices/EditIPAssignmentDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 const typeIcons: Record<string, any> = {
@@ -37,6 +39,30 @@ const DeviceDetail = () => {
   const [savingNotes, setSavingNotes] = useState(false);
   const [loading, setLoading] = useState(true);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [editIp, setEditIp] = useState<any | null>(null);
+  const [deleteIp, setDeleteIp] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteIp = async () => {
+    if (!deleteIp) return;
+    setDeleting(true);
+    const { error } = await supabase.from("ip_assignments").delete().eq("id", deleteIp.id);
+    if (error) { setDeleting(false); return toast.error(error.message); }
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("change_log").insert({
+      table_name: "ip_assignments",
+      change_type: "delete",
+      device_id: deleteIp.device_id,
+      record_id: deleteIp.id,
+      changed_by: user?.id,
+      field_name: "ip_address",
+      old_value: deleteIp.ip_address,
+    });
+    setDeleting(false);
+    toast.success("IP deleted");
+    setDeleteIp(null);
+    fetchDevice();
+  };
 
 
 
@@ -155,7 +181,7 @@ const DeviceDetail = () => {
             </div>
             <div className="flex items-center gap-2">
               {isAdminOrAbove && (
-                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setBulkOpen(true)} disabled={interfaces.length === 0}>
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setBulkOpen(true)}>
                   <Network className="h-3.5 w-3.5 mr-1" /> Bulk Add IPs
                 </Button>
               )}
@@ -234,6 +260,16 @@ const DeviceDetail = () => {
                                         {ip.last_ping_ms != null && <span className="text-muted-foreground">{ip.last_ping_ms}ms</span>}
                                         {ip.is_public ? <span className="text-primary">🌐 Public</span> : <span>🏠 Local</span>}
                                         {ip.blacklist_count > 0 && <span className="text-destructive">🛡 {ip.blacklist_count}</span>}
+                                        {isAdminOrAbove && (
+                                          <>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditIp(ip)} title="Edit IP">
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => setDeleteIp(ip)} title="Delete IP">
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </>
+                                        )}
                                       </div>
                                     </div>
                                     {ip.last_ping_at && <p className="text-[10px] text-muted-foreground mt-1">Last checked: {new Date(ip.last_ping_at).toLocaleString("en-KE", { timeZone: "Africa/Nairobi" })}</p>}
@@ -364,6 +400,27 @@ const DeviceDetail = () => {
           interfaces={interfaces.map((i) => ({ id: i.id, name: i.name }))}
           onCreated={fetchDevice}
         />
+        <EditIPAssignmentDialog
+          open={!!editIp}
+          onOpenChange={(o) => !o && setEditIp(null)}
+          ip={editIp}
+          interfaces={interfaces.map((i) => ({ id: i.id, name: i.name }))}
+          onSaved={fetchDevice}
+        />
+        <AlertDialog open={!!deleteIp} onOpenChange={(o) => !o && setDeleteIp(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete IP {deleteIp?.ip_address}?</AlertDialogTitle>
+              <AlertDialogDescription>This permanently removes the IP assignment and stops all monitoring for it.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteIp} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </SidebarProvider>
   );
