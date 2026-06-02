@@ -260,6 +260,16 @@ const DeviceDetail = () => {
                                         {ip.last_ping_ms != null && <span className="text-muted-foreground">{ip.last_ping_ms}ms</span>}
                                         {ip.is_public ? <span className="text-primary">🌐 Public</span> : <span>🏠 Local</span>}
                                         {ip.blacklist_count > 0 && <span className="text-destructive">🛡 {ip.blacklist_count}</span>}
+                                        {isAdminOrAbove && (
+                                          <>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditIp(ip)} title="Edit IP">
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => setDeleteIp(ip)} title="Delete IP">
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </>
+                                        )}
                                       </div>
                                     </div>
                                     {ip.last_ping_at && <p className="text-[10px] text-muted-foreground mt-1">Last checked: {new Date(ip.last_ping_at).toLocaleString("en-KE", { timeZone: "Africa/Nairobi" })}</p>}
