@@ -7,11 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { VersionFooter } from "@/components/dashboard/VersionFooter";
-import { ArrowLeft, Router, Monitor, HardDrive, Radio, Wifi, Cpu, ChevronDown, ChevronRight, Copy, Save, Loader2, Network } from "lucide-react";
+import { ArrowLeft, Router, Monitor, HardDrive, Radio, Wifi, Cpu, ChevronDown, ChevronRight, Copy, Save, Loader2, Network, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { useHostingMode } from "@/hooks/use-hosting-mode";
 import { BulkAddIPsDialog } from "@/components/devices/BulkAddIPsDialog";
+import { EditIPAssignmentDialog } from "@/components/devices/EditIPAssignmentDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 const typeIcons: Record<string, any> = {
