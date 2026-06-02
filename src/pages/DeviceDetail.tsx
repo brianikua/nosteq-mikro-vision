@@ -7,10 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { VersionFooter } from "@/components/dashboard/VersionFooter";
-import { ArrowLeft, Router, Monitor, HardDrive, Radio, Wifi, Cpu, ChevronDown, ChevronRight, Copy, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Router, Monitor, HardDrive, Radio, Wifi, Cpu, ChevronDown, ChevronRight, Copy, Save, Loader2, Network } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { useHostingMode } from "@/hooks/use-hosting-mode";
+import { BulkAddIPsDialog } from "@/components/devices/BulkAddIPsDialog";
 import { toast } from "sonner";
 
 const typeIcons: Record<string, any> = {
@@ -35,6 +36,9 @@ const DeviceDetail = () => {
   const [nocNotes, setNocNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [bulkOpen, setBulkOpen] = useState(false);
+
+
 
   useEffect(() => {
     const init = async () => {
@@ -150,6 +154,11 @@ const DeviceDetail = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {isAdminOrAbove && (
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setBulkOpen(true)} disabled={interfaces.length === 0}>
+                  <Network className="h-3.5 w-3.5 mr-1" /> Bulk Add IPs
+                </Button>
+              )}
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={generateConfig}>
                 <Copy className="h-3.5 w-3.5 mr-1" /> Generate Config
               </Button>
@@ -348,6 +357,13 @@ const DeviceDetail = () => {
           </main>
           <VersionFooter />
         </div>
+        <BulkAddIPsDialog
+          open={bulkOpen}
+          onOpenChange={setBulkOpen}
+          deviceId={id!}
+          interfaces={interfaces.map((i) => ({ id: i.id, name: i.name }))}
+          onCreated={fetchDevice}
+        />
       </div>
     </SidebarProvider>
   );
