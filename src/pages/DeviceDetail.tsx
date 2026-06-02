@@ -39,6 +39,30 @@ const DeviceDetail = () => {
   const [savingNotes, setSavingNotes] = useState(false);
   const [loading, setLoading] = useState(true);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [editIp, setEditIp] = useState<any | null>(null);
+  const [deleteIp, setDeleteIp] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteIp = async () => {
+    if (!deleteIp) return;
+    setDeleting(true);
+    const { error } = await supabase.from("ip_assignments").delete().eq("id", deleteIp.id);
+    if (error) { setDeleting(false); return toast.error(error.message); }
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("change_log").insert({
+      table_name: "ip_assignments",
+      change_type: "delete",
+      device_id: deleteIp.device_id,
+      record_id: deleteIp.id,
+      changed_by: user?.id,
+      field_name: "ip_address",
+      old_value: deleteIp.ip_address,
+    });
+    setDeleting(false);
+    toast.success("IP deleted");
+    setDeleteIp(null);
+    fetchDevice();
+  };
 
 
 
