@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -16,6 +16,8 @@ interface Props {
   interfaces: { id: string; name: string }[];
   onCreated: () => void;
 }
+
+const NEW_IF = "__new__";
 
 function ipToInt(ip: string): number {
   const parts = ip.split(".").map(Number);
@@ -43,13 +45,18 @@ function expandCIDR(cidr: string, skipNetBroadcast: boolean): string[] {
 
 export const BulkAddIPsDialog = ({ open, onOpenChange, deviceId, interfaces, onCreated }: Props) => {
   const [cidr, setCidr] = useState("");
-  const [interfaceId, setInterfaceId] = useState<string>(interfaces[0]?.id || "");
+  const [interfaceId, setInterfaceId] = useState<string>(interfaces[0]?.id || NEW_IF);
+  const [newIfName, setNewIfName] = useState("ether1");
   const [role, setRole] = useState("Uplink");
   const [skipNetBcast, setSkipNetBcast] = useState(true);
   const [isPublic, setIsPublic] = useState(true);
   const [monitorUptime, setMonitorUptime] = useState(true);
   const [monitorBlacklist, setMonitorBlacklist] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) setInterfaceId(interfaces[0]?.id || NEW_IF);
+  }, [open, interfaces]);
 
   const preview = useMemo(() => {
     if (!cidr.includes("/")) return { ips: [] as string[], error: "" };
@@ -63,20 +70,32 @@ export const BulkAddIPsDialog = ({ open, onOpenChange, deviceId, interfaces, onC
   const prefix = parseInt(cidr.split("/")[1] || "0", 10);
 
   const handleSubmit = async () => {
-    if (!interfaceId) return toast.error("Pick an interface");
     if (preview.error || preview.ips.length === 0) return toast.error("Invalid CIDR");
     if (preview.ips.length > 1024) return toast.error("Too many IPs (max 1024)");
 
     setSaving(true);
+
+    let ifaceId = interfaceId;
+    if (ifaceId === NEW_IF) {
+      if (!newIfName.trim()) { setSaving(false); return toast.error("Interface name required"); }
+      const { data: created, error: ifErr } = await supabase
+        .from("interfaces")
+        .insert({ device_id: deviceId, name: newIfName.trim(), type: "ethernet", is_public: isPublic })
+        .select("id")
+        .single();
+      if (ifErr || !created) { setSaving(false); return toast.error(ifErr?.message || "Failed to create interface"); }
+      ifaceId = created.id;
+    }
+
     const rows = preview.ips.map((ip) => ({
       device_id: deviceId,
-      interface_id: interfaceId,
+      interface_id: ifaceId,
       ip_address: `${ip}/${prefix}`,
       ip_only: ip,
       prefix_length: prefix,
       ip_type: "static",
       role,
-      is_public: isPublic && monitorBlacklist ? true : isPublic,
+      is_public: isPublic,
       monitor_uptime: monitorUptime,
       monitor_blacklist: monitorBlacklist && isPublic,
       reachability_type: isPublic ? "public" : "local",
@@ -89,7 +108,6 @@ export const BulkAddIPsDialog = ({ open, onOpenChange, deviceId, interfaces, onC
       return toast.error(error.message);
     }
 
-    // change_log entry
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from("change_log").insert({
       table_name: "ip_assignments",
@@ -109,7 +127,7 @@ export const BulkAddIPsDialog = ({ open, onOpenChange, deviceId, interfaces, onC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Network className="h-4 w-4" /> Bulk Add IPs from CIDR</DialogTitle>
           <DialogDescription>Expand a CIDR block into individual monitored IP assignments.</DialogDescription>
@@ -133,8 +151,17 @@ export const BulkAddIPsDialog = ({ open, onOpenChange, deviceId, interfaces, onC
               <SelectTrigger><SelectValue placeholder="Select interface" /></SelectTrigger>
               <SelectContent>
                 {interfaces.map((i) => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                <SelectItem value={NEW_IF}>+ Create new interface…</SelectItem>
               </SelectContent>
             </Select>
+            {interfaceId === NEW_IF && (
+              <Input
+                className="mt-2 font-mono"
+                placeholder="Interface name (e.g. ether1, bridge-wan)"
+                value={newIfName}
+                onChange={(e) => setNewIfName(e.target.value)}
+              />
+            )}
           </div>
 
           <div>
