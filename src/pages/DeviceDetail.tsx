@@ -357,6 +357,13 @@ const DeviceDetail = () => {
           </main>
           <VersionFooter />
         </div>
+        <BulkAddIPsDialog
+          open={bulkOpen}
+          onOpenChange={setBulkOpen}
+          deviceId={id!}
+          interfaces={interfaces.map((i) => ({ id: i.id, name: i.name }))}
+          onCreated={fetchDevice}
+        />
       </div>
     </SidebarProvider>
   );
