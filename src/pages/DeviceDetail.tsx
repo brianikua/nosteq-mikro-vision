@@ -400,6 +400,27 @@ const DeviceDetail = () => {
           interfaces={interfaces.map((i) => ({ id: i.id, name: i.name }))}
           onCreated={fetchDevice}
         />
+        <EditIPAssignmentDialog
+          open={!!editIp}
+          onOpenChange={(o) => !o && setEditIp(null)}
+          ip={editIp}
+          interfaces={interfaces.map((i) => ({ id: i.id, name: i.name }))}
+          onSaved={fetchDevice}
+        />
+        <AlertDialog open={!!deleteIp} onOpenChange={(o) => !o && setDeleteIp(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete IP {deleteIp?.ip_address}?</AlertDialogTitle>
+              <AlertDialogDescription>This permanently removes the IP assignment and stops all monitoring for it.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteIp} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </SidebarProvider>
   );
