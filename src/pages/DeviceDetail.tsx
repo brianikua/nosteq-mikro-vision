@@ -181,7 +181,7 @@ const DeviceDetail = () => {
             </div>
             <div className="flex items-center gap-2">
               {isAdminOrAbove && (
-                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setBulkOpen(true)} disabled={interfaces.length === 0}>
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setBulkOpen(true)}>
                   <Network className="h-3.5 w-3.5 mr-1" /> Bulk Add IPs
                 </Button>
               )}
