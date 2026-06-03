@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Devices from "./pages/Devices";
 import DeviceDetail from "./pages/DeviceDetail";
+import IPBlocks from "./pages/IPBlocks";
+import BlacklistMonitor from "./pages/BlacklistMonitor";
 import IPIntelligence from "./pages/IPIntelligence";
 import NetworkHealth from "./pages/NetworkHealth";
 import SettingsPage from "./pages/Settings";
