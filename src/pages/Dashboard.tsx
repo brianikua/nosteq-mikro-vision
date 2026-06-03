@@ -129,9 +129,12 @@ const Dashboard = () => {
                 <p className="text-[11px] text-muted-foreground">Network overview & intelligence</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { fetchDashboardData(); toast.info("Refreshing..."); }}>
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
-            </Button>
+            <div className="flex items-center gap-3">
+              <BlacklistAlertPill />
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { fetchDashboardData(); toast.info("Refreshing..."); }}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
+              </Button>
+            </div>
           </header>
 
           <main className="flex-1 p-4 md:p-6 overflow-auto animate-in fade-in duration-200 space-y-6">
