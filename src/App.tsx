@@ -31,8 +31,11 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/devices" element={<Devices />} />
+            <Route path="/devices" element={<IPBlocks />} />
+            <Route path="/network-devices" element={<Devices />} />
+            <Route path="/network-devices/:id" element={<DeviceDetail />} />
             <Route path="/devices/:id" element={<DeviceDetail />} />
+            <Route path="/blacklist-monitor" element={<BlacklistMonitor />} />
             <Route path="/ip-intelligence" element={<IPIntelligence />} />
             <Route path="/network-health" element={<NetworkHealth />} />
             <Route path="/settings" element={<SettingsPage />} />
