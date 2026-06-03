@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { UpdateBanner } from "@/components/dashboard/UpdateBanner";
 import { VersionFooter } from "@/components/dashboard/VersionFooter";
+import { BlacklistAlertPill } from "@/components/dashboard/BlacklistAlertPill";
 import { cn } from "@/lib/utils";
 import {
   Monitor, Wifi, WifiOff, ShieldAlert, ArrowRight, Activity, AlertTriangle, Globe,
