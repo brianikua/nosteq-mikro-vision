@@ -390,7 +390,6 @@ function AddIPDialog({ open, onOpenChange, blockId, onSaved }: { open: boolean; 
       assigned_to: assignedTo || null,
     });
     if (!error) {
-      if (!error) {
       const { count } = await supabase.from("ip_addresses").select("id", { count: "exact", head: true }).eq("block_id", blockId);
       await supabase.from("ip_blocks").update({ assigned_ips: count || 0 }).eq("id", blockId);
     }
