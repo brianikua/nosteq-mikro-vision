@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Devices from "./pages/Devices";
 import DeviceDetail from "./pages/DeviceDetail";
+import IPBlocks from "./pages/IPBlocks";
+import BlacklistMonitor from "./pages/BlacklistMonitor";
 import IPIntelligence from "./pages/IPIntelligence";
 import NetworkHealth from "./pages/NetworkHealth";
 import SettingsPage from "./pages/Settings";
@@ -29,8 +31,11 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/devices" element={<Devices />} />
+            <Route path="/devices" element={<IPBlocks />} />
+            <Route path="/network-devices" element={<Devices />} />
+            <Route path="/network-devices/:id" element={<DeviceDetail />} />
             <Route path="/devices/:id" element={<DeviceDetail />} />
+            <Route path="/blacklist-monitor" element={<BlacklistMonitor />} />
             <Route path="/ip-intelligence" element={<IPIntelligence />} />
             <Route path="/network-health" element={<NetworkHealth />} />
             <Route path="/settings" element={<SettingsPage />} />
