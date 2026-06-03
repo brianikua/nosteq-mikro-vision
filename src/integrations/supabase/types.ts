@@ -484,6 +484,56 @@ export type Database = {
           },
         ]
       }
+      ip_addresses: {
+        Row: {
+          assigned_to: string | null
+          block_id: string | null
+          created_at: string
+          id: string
+          ip_address: string
+          is_blacklisted: boolean | null
+          last_ping_ms: number | null
+          rbl_lists: string[] | null
+          role: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          block_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address: string
+          is_blacklisted?: boolean | null
+          last_ping_ms?: number | null
+          rbl_lists?: string[] | null
+          role?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          block_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string
+          is_blacklisted?: boolean | null
+          last_ping_ms?: number | null
+          rbl_lists?: string[] | null
+          role?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ip_addresses_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "ip_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ip_assignments: {
         Row: {
           blacklist_count: number | null
@@ -564,6 +614,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ip_blocks: {
+        Row: {
+          assigned_ips: number | null
+          blacklisted_count: number | null
+          block_type: string | null
+          broadcast: string | null
+          cidr: string
+          created_at: string
+          gateway: string | null
+          id: string
+          label: string | null
+          status: string | null
+          total_ips: number | null
+          updated_at: string
+          usable_ips: number | null
+          vlan_id: number | null
+        }
+        Insert: {
+          assigned_ips?: number | null
+          blacklisted_count?: number | null
+          block_type?: string | null
+          broadcast?: string | null
+          cidr: string
+          created_at?: string
+          gateway?: string | null
+          id?: string
+          label?: string | null
+          status?: string | null
+          total_ips?: number | null
+          updated_at?: string
+          usable_ips?: number | null
+          vlan_id?: number | null
+        }
+        Update: {
+          assigned_ips?: number | null
+          blacklisted_count?: number | null
+          block_type?: string | null
+          broadcast?: string | null
+          cidr?: string
+          created_at?: string
+          gateway?: string | null
+          id?: string
+          label?: string | null
+          status?: string | null
+          total_ips?: number | null
+          updated_at?: string
+          usable_ips?: number | null
+          vlan_id?: number | null
+        }
+        Relationships: []
       }
       ip_downtime_events: {
         Row: {
