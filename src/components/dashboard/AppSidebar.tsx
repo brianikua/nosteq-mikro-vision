@@ -20,8 +20,9 @@ interface AppSidebarProps {
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: Layout, route: "/dashboard" },
-  { id: "devices", label: "Network Devices", icon: Monitor, route: "/devices" },
+  { id: "devices", label: "IP Blocks", icon: Monitor, route: "/devices" },
   { id: "ip-intelligence", label: "IP Intelligence", icon: Globe, route: "/ip-intelligence" },
+  { id: "blacklist-monitor", label: "Blacklist Monitor", icon: Shield, route: "/blacklist-monitor" },
   { id: "network-health", label: "Network Health", icon: Activity, route: "/network-health" },
   { id: "settings", label: "Settings", icon: Settings, route: "/settings" },
 ];
