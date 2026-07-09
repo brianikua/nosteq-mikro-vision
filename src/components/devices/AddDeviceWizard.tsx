@@ -31,6 +31,7 @@ const deviceTypes = [
 
 const interfaceTypes = ["ethernet", "bridge", "vlan", "wireless", "loopback", "tunnel", "sfp", "lag", "other"];
 const ipRoles = ["WAN", "LAN", "Management", "Loopback", "VLAN_Gateway", "Tunnel", "Other"];
+const snmpCapableTypes = ["MikroTik_Switch", "MikroTik_Router"];
 
 interface InterfaceEntry {
   name: string;
@@ -72,6 +73,12 @@ export function AddDeviceWizard({ open, onOpenChange, onSaved }: AddDeviceWizard
     site_name: "", site_address: "", status: "active", noc_notes: "",
   });
 
+  // Step 1: SNMP monitoring (only relevant for switches/routers) — polled by the
+  // on-prem collector, not reachable from Supabase directly since these are LAN-only devices.
+  const [snmp, setSnmp] = useState({
+    enabled: false, version: "v2c", community: "", port: "161", managementIp: "",
+  });
+
   // Step 2: Interfaces
   const [interfaces, setInterfaces] = useState<InterfaceEntry[]>([]);
 
@@ -95,8 +102,14 @@ export function AddDeviceWizard({ open, onOpenChange, onSaved }: AddDeviceWizard
   const monitoredIPs = interfaces.reduce((sum, iface) => sum + iface.ips.filter((ip) => ip.monitor_uptime).length, 0);
   const blacklistIPs = interfaces.reduce((sum, iface) => sum + iface.ips.filter((ip) => ip.monitor_blacklist).length, 0);
 
+  const snmpActive = snmpCapableTypes.includes(basics.type) && snmp.enabled;
+
   const handleSave = async () => {
     if (!basics.name) { toast.error("Device name is required"); return; }
+    if (snmpActive && !/^\d{1,3}(\.\d{1,3}){3}$/.test(snmp.managementIp.trim())) {
+      toast.error("A valid SNMP/management IP is required when SNMP monitoring is enabled — the collector polls this address directly.");
+      return;
+    }
     setSaving(true);
 
     try {
@@ -115,7 +128,14 @@ export function AddDeviceWizard({ open, onOpenChange, onSaved }: AddDeviceWizard
         status: basics.status,
         noc_notes: basics.noc_notes || null,
         added_by: user?.id || null,
-        ip_address: "0.0.0.0", // Legacy field, required by existing schema
+        // The snmp-collector polls this column directly, so it must be the switch's
+        // real LAN management IP when SNMP is enabled — otherwise it's an unused
+        // legacy field required by the schema.
+        ip_address: snmpActive ? snmp.managementIp.trim() : "0.0.0.0",
+        snmp_enabled: snmpActive,
+        snmp_version: snmp.version,
+        snmp_community: snmpActive ? (snmp.community || null) : null,
+        snmp_port: parseInt(snmp.port, 10) || 161,
       }).select().single();
 
       if (devError) throw devError;
@@ -258,6 +278,42 @@ export function AddDeviceWizard({ open, onOpenChange, onSaved }: AddDeviceWizard
                 </Select>
               </div>
             </div>
+
+            {snmpCapableTypes.includes(basics.type) && (
+              <div className="border border-border rounded-lg p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Switch checked={snmp.enabled} onCheckedChange={(v) => setSnmp({ ...snmp, enabled: v })} />
+                  <span className="text-sm font-medium text-foreground">SNMP Monitoring</span>
+                </div>
+                {snmp.enabled && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="text-xs text-muted-foreground">SNMP / Management IP *</label>
+                      <Input className="font-mono-ip" placeholder="192.168.1.1" value={snmp.managementIp} onChange={(e) => setSnmp({ ...snmp, managementIp: e.target.value })} />
+                      <p className="text-[10px] text-muted-foreground mt-1">Polled directly by the on-prem SNMP collector — must be reachable from wherever that script runs.</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Community String *</label>
+                      <Input value={snmp.community} onChange={(e) => setSnmp({ ...snmp, community: e.target.value })} placeholder="public" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">SNMP Version</label>
+                      <Select value={snmp.version} onValueChange={(v) => setSnmp({ ...snmp, version: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="v2c">v2c</SelectItem>
+                          <SelectItem value="v1">v1</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Port</label>
+                      <Input type="number" value={snmp.port} onChange={(e) => setSnmp({ ...snmp, port: e.target.value })} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

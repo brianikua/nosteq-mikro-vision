@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { X, Plus, ScanLine, AlertTriangle, Network } from "lucide-react";
+import { X, Plus, ScanLine, AlertTriangle, Network, Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { toast } from "sonner";
@@ -49,6 +49,22 @@ const dotColor: Record<string, string> = {
   unassigned: "bg-muted",
 };
 
+// Recomputes a block's rollups from the ip_addresses source of truth — always a
+// fresh COUNT, never an increment/decrement, so it self-heals after any add/delete.
+// "Used" excludes rows explicitly marked unassigned; blacklisted_count/status
+// reflect the real RBL state instead of the 'healthy' default that never changed.
+async function recomputeBlockStats(blockId: string) {
+  const [{ count: usedCount }, { count: blCount }, { data: blockRow }] = await Promise.all([
+    supabase.from("ip_addresses").select("id", { count: "exact", head: true }).eq("block_id", blockId).neq("status", "unassigned"),
+    supabase.from("ip_addresses").select("id", { count: "exact", head: true }).eq("block_id", blockId).eq("is_blacklisted", true),
+    supabase.from("ip_blocks").select("usable_ips").eq("id", blockId).single(),
+  ]);
+  const usable = blockRow?.usable_ips || 0;
+  const pct = usable > 0 ? ((usedCount || 0) / usable) * 100 : 0;
+  const status = (blCount || 0) > 0 || pct >= 90 ? "critical" : pct >= 70 ? "warning" : "healthy";
+  await supabase.from("ip_blocks").update({ assigned_ips: usedCount || 0, blacklisted_count: blCount || 0, status }).eq("id", blockId);
+}
+
 export default function IPBlocks() {
   useAutoLogout();
   const navigate = useNavigate();
@@ -59,6 +75,7 @@ export default function IPBlocks() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addBlockOpen, setAddBlockOpen] = useState(false);
   const [addIpOpen, setAddIpOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -82,6 +99,28 @@ export default function IPBlocks() {
 
   const selected = useMemo(() => blocks.find(b => b.id === selectedId) || null, [blocks, selectedId]);
   const selectedIps = useMemo(() => ips.filter(i => i.block_id === selectedId), [ips, selectedId]);
+
+  const deleteIp = async (ipId: string, blockId: string) => {
+    if (!confirm("Remove this IP from the block?")) return;
+    const { error } = await supabase.from("ip_addresses").delete().eq("id", ipId);
+    if (error) { toast.error(error.message); return; }
+    await recomputeBlockStats(blockId);
+    toast.success("IP removed");
+    fetchAll();
+  };
+
+  const scanBlock = async () => {
+    if (!selected) return;
+    setScanning(true);
+    const { data, error } = await supabase.functions.invoke("check-ip-reputation", {
+      body: { block_id: selected.id },
+    });
+    setScanning(false);
+    if (error) { toast.error("Scan failed: " + error.message); return; }
+    const flagged = (data?.results || []).filter((r: any) => r.is_blacklisted).length;
+    toast.success(`Scanned ${data?.scanned ?? 0} IP(s)${flagged > 0 ? ` — ${flagged} flagged` : ", all clean"}`);
+    fetchAll();
+  };
 
   const stats = useMemo(() => {
     const totalBlocks = blocks.length;
@@ -232,10 +271,19 @@ export default function IPBlocks() {
                             {ip.last_ping_ms != null && <span className="text-muted-foreground text-[10px]">{ip.last_ping_ms}ms</span>}
                             {ip.assigned_to && <span className="text-muted-foreground text-[10px] truncate">→ {ip.assigned_to}</span>}
                             {ip.is_blacklisted && ip.rbl_lists && ip.rbl_lists.length > 0 && (
-                              <span className="ml-auto inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive border border-destructive/30">
+                              <span className={cn("inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive border border-destructive/30", !isAdminOrAbove && "ml-auto")}>
                                 <AlertTriangle className="h-2.5 w-2.5" />
                                 {ip.rbl_lists.join(", ")}
                               </span>
+                            )}
+                            {isAdminOrAbove && (
+                              <Button
+                                variant="ghost" size="icon"
+                                className="h-5 w-5 ml-auto shrink-0 text-muted-foreground hover:text-destructive"
+                                onClick={() => deleteIp(ip.id, selected!.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
                             )}
                           </div>
                         ))}
@@ -243,8 +291,9 @@ export default function IPBlocks() {
                     </div>
 
                     <div className="flex gap-2 pt-2 border-t border-border">
-                      <Button size="sm" variant="outline" className="text-xs" onClick={() => toast.info("Scan queued — RBL/ping run will appear shortly")}>
-                        <ScanLine className="h-3.5 w-3.5 mr-1.5" /> Scan Block
+                      <Button size="sm" variant="outline" className="text-xs" onClick={scanBlock} disabled={scanning || selectedIps.length === 0}>
+                        {scanning ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5 mr-1.5" />}
+                        {scanning ? "Scanning…" : "Scan Block"}
                       </Button>
                     </div>
                   </div>
@@ -390,8 +439,7 @@ function AddIPDialog({ open, onOpenChange, blockId, onSaved }: { open: boolean; 
       assigned_to: assignedTo || null,
     });
     if (!error) {
-      const { count } = await supabase.from("ip_addresses").select("id", { count: "exact", head: true }).eq("block_id", blockId);
-      await supabase.from("ip_blocks").update({ assigned_ips: count || 0 }).eq("id", blockId);
+      await recomputeBlockStats(blockId);
     }
     setSaving(false);
     if (error) { toast.error(error.message); return; }

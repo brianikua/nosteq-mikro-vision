@@ -304,6 +304,7 @@ export type Database = {
           check_interval_minutes: number | null
           check_ports: number[] | null
           consecutive_failures: number
+          cpu_load_pct: number | null
           created_at: string
           down_since: string | null
           escalation_sent: boolean
@@ -317,6 +318,7 @@ export type Database = {
           is_up: boolean | null
           last_latency_ms: number | null
           last_ping_at: string | null
+          last_snmp_poll_at: string | null
           model: string | null
           monitor_enabled: boolean | null
           name: string
@@ -327,7 +329,13 @@ export type Database = {
           server_id: string | null
           site_address: string | null
           site_name: string | null
+          snmp_community: string | null
+          snmp_enabled: boolean | null
+          snmp_port: number | null
+          snmp_reachable: boolean | null
+          snmp_version: string | null
           status: string | null
+          sys_uptime_seconds: number | null
           type: string | null
           updated_at: string
           vpn_site_id: string | null
@@ -337,6 +345,7 @@ export type Database = {
           check_interval_minutes?: number | null
           check_ports?: number[] | null
           consecutive_failures?: number
+          cpu_load_pct?: number | null
           created_at?: string
           down_since?: string | null
           escalation_sent?: boolean
@@ -350,6 +359,7 @@ export type Database = {
           is_up?: boolean | null
           last_latency_ms?: number | null
           last_ping_at?: string | null
+          last_snmp_poll_at?: string | null
           model?: string | null
           monitor_enabled?: boolean | null
           name: string
@@ -360,7 +370,13 @@ export type Database = {
           server_id?: string | null
           site_address?: string | null
           site_name?: string | null
+          snmp_community?: string | null
+          snmp_enabled?: boolean | null
+          snmp_port?: number | null
+          snmp_reachable?: boolean | null
+          snmp_version?: string | null
           status?: string | null
+          sys_uptime_seconds?: number | null
           type?: string | null
           updated_at?: string
           vpn_site_id?: string | null
@@ -370,6 +386,7 @@ export type Database = {
           check_interval_minutes?: number | null
           check_ports?: number[] | null
           consecutive_failures?: number
+          cpu_load_pct?: number | null
           created_at?: string
           down_since?: string | null
           escalation_sent?: boolean
@@ -383,6 +400,7 @@ export type Database = {
           is_up?: boolean | null
           last_latency_ms?: number | null
           last_ping_at?: string | null
+          last_snmp_poll_at?: string | null
           model?: string | null
           monitor_enabled?: boolean | null
           name?: string
@@ -393,7 +411,13 @@ export type Database = {
           server_id?: string | null
           site_address?: string | null
           site_name?: string | null
+          snmp_community?: string | null
+          snmp_enabled?: boolean | null
+          snmp_port?: number | null
+          snmp_reachable?: boolean | null
+          snmp_version?: string | null
           status?: string | null
+          sys_uptime_seconds?: number | null
           type?: string | null
           updated_at?: string
           vpn_site_id?: string | null
@@ -415,55 +439,123 @@ export type Database = {
           },
         ]
       }
+      interface_metrics: {
+        Row: {
+          id: string
+          in_bps: number | null
+          in_errors: number | null
+          in_octets: number | null
+          interface_id: string
+          out_bps: number | null
+          out_errors: number | null
+          out_octets: number | null
+          recorded_at: string
+        }
+        Insert: {
+          id?: string
+          in_bps?: number | null
+          in_errors?: number | null
+          in_octets?: number | null
+          interface_id: string
+          out_bps?: number | null
+          out_errors?: number | null
+          out_octets?: number | null
+          recorded_at?: string
+        }
+        Update: {
+          id?: string
+          in_bps?: number | null
+          in_errors?: number | null
+          in_octets?: number | null
+          interface_id?: string
+          out_bps?: number | null
+          out_errors?: number | null
+          out_octets?: number | null
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interface_metrics_interface_id_fkey"
+            columns: ["interface_id"]
+            isOneToOne: false
+            referencedRelation: "interfaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interfaces: {
         Row: {
+          admin_status: string | null
           created_at: string | null
           description: string | null
           device_id: string
           id: string
+          if_index: number | null
+          in_bps: number | null
           is_public: boolean | null
+          last_in_octets: number | null
+          last_out_octets: number | null
+          last_snmp_poll_at: string | null
           link_status: string | null
           mac_address: string | null
           monitor_uptime: boolean | null
           name: string
           notes: string | null
+          out_bps: number | null
           parent_interface_id: string | null
           sort_order: number | null
           speed: string | null
+          speed_mbps: number | null
           type: string | null
           vlan_id: number | null
         }
         Insert: {
+          admin_status?: string | null
           created_at?: string | null
           description?: string | null
           device_id: string
           id?: string
+          if_index?: number | null
+          in_bps?: number | null
           is_public?: boolean | null
+          last_in_octets?: number | null
+          last_out_octets?: number | null
+          last_snmp_poll_at?: string | null
           link_status?: string | null
           mac_address?: string | null
           monitor_uptime?: boolean | null
           name: string
           notes?: string | null
+          out_bps?: number | null
           parent_interface_id?: string | null
           sort_order?: number | null
           speed?: string | null
+          speed_mbps?: number | null
           type?: string | null
           vlan_id?: number | null
         }
         Update: {
+          admin_status?: string | null
           created_at?: string | null
           description?: string | null
           device_id?: string
           id?: string
+          if_index?: number | null
+          in_bps?: number | null
           is_public?: boolean | null
+          last_in_octets?: number | null
+          last_out_octets?: number | null
+          last_snmp_poll_at?: string | null
           link_status?: string | null
           mac_address?: string | null
           monitor_uptime?: boolean | null
           name?: string
           notes?: string | null
+          out_bps?: number | null
           parent_interface_id?: string | null
           sort_order?: number | null
           speed?: string | null
+          speed_mbps?: number | null
           type?: string | null
           vlan_id?: number | null
         }

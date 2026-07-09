@@ -199,6 +199,22 @@ const DNSBL_PROVIDERS = [
   { host: "ubl.unsubscore.com", name: "UBL Unsubscore" },
 ];
 
+const IP_V4_REGEX = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+
+async function runAllChecks(
+  ip: string,
+  keys: { abuseIPDBKey?: string; virusTotalKey?: string; ipqsKey?: string }
+): Promise<BlacklistResult[]> {
+  const checks: Promise<BlacklistResult>[] = [];
+  for (const p of DNSBL_PROVIDERS) checks.push(checkDNSBL(ip, p.host, p.name));
+  checks.push(checkIPApi(ip));
+  checks.push(checkBlocklistDe(ip));
+  if (keys.abuseIPDBKey) checks.push(checkAbuseIPDB(ip, keys.abuseIPDBKey));
+  if (keys.virusTotalKey) checks.push(checkVirusTotal(ip, keys.virusTotalKey));
+  if (keys.ipqsKey) checks.push(checkIPQualityScore(ip, keys.ipqsKey));
+  return Promise.all(checks);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -276,11 +292,100 @@ Deno.serve(async (req) => {
     const manualIp = body.ip_address;
 
     // Validate input
-    if (manualIp && !/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(manualIp)) {
+    if (manualIp && !IP_V4_REGEX.test(manualIp)) {
       return new Response(
         JSON.stringify({ error: "Invalid IP address format" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // ── IP Blocks inventory scan (ip_addresses / ip_blocks) ──
+    // Separate from the device-monitoring path below: these rows have no
+    // device_id and must never be written into blacklist_scans, whose
+    // device_id column is NOT NULL. This is what actually powers the
+    // "Blacklisted IPs" counters and RBL badges on the IP Blocks and
+    // Blacklist Monitor pages — previously nothing wrote to
+    // ip_addresses.is_blacklisted/rbl_lists at all, so those pages always
+    // showed "0 / all clean" regardless of real status.
+    if (body.block_id || body.ip_address_id || body.check_ip) {
+      if (body.check_ip && !IP_V4_REGEX.test(body.check_ip)) {
+        return new Response(
+          JSON.stringify({ error: "Invalid IP address format" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Ad-hoc lookup (Blacklist Monitor's "RBL Checker") — not tied to
+      // inventory, nothing persisted.
+      if (body.check_ip && !body.block_id && !body.ip_address_id) {
+        const scanResults = await runAllChecks(body.check_ip, { abuseIPDBKey, virusTotalKey, ipqsKey });
+        const listed = scanResults.filter((r) => r.listed);
+        return new Response(JSON.stringify({
+          success: true,
+          ip: body.check_ip,
+          listed_count: listed.length,
+          providers: listed.map((r) => ({ provider: r.provider, category: r.category, confidence: r.confidence })),
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      let rows: { id: string; ip_address: string; block_id: string | null; is_blacklisted: boolean | null }[] = [];
+      if (body.ip_address_id) {
+        const { data } = await supabase.from("ip_addresses").select("id, ip_address, block_id, is_blacklisted").eq("id", body.ip_address_id);
+        rows = data || [];
+      } else {
+        const { data } = await supabase.from("ip_addresses").select("id, ip_address, block_id, is_blacklisted").eq("block_id", body.block_id);
+        rows = data || [];
+      }
+
+      const scanned: any[] = [];
+      for (const row of rows) {
+        const scanResults = await runAllChecks(row.ip_address, { abuseIPDBKey, virusTotalKey, ipqsKey });
+        const listedProviders = scanResults.filter((r) => r.listed).map((r) => r.provider);
+        const isNowBlacklisted = listedProviders.length > 0;
+        const wasBlacklisted = row.is_blacklisted === true;
+
+        await supabase.from("ip_addresses").update({
+          is_blacklisted: isNowBlacklisted,
+          rbl_lists: listedProviders,
+        }).eq("id", row.id);
+
+        // Alert only on a clean → listed transition, mirroring the device-monitoring path.
+        if (isNowBlacklisted && !wasBlacklisted && telegramEnabled) {
+          const msg = [
+            `🚨 *BLACKLIST ALERT*`,
+            ``,
+            `📍 IP: \`${escMd(row.ip_address)}\``,
+            `🔴 Newly listed on *${escMd(String(listedProviders.length))}* provider${listedProviders.length > 1 ? "s" : ""}:`,
+            ...listedProviders.map((p) => `  • ${escMd(p)}`),
+          ].join("\n");
+          const sent = await sendTelegram(botToken!, tgConfig!.chat_id, msg);
+          await supabase.from("notification_log").insert({
+            event_type: "ip_blacklisted",
+            ip_address: row.ip_address,
+            message: `IP block inventory: ${row.ip_address} newly blacklisted on ${listedProviders.join(", ")}`,
+            success: sent,
+            error_message: sent ? null : "Telegram send failed",
+          });
+        }
+
+        scanned.push({ ip: row.ip_address, is_blacklisted: isNowBlacklisted, rbl_lists: listedProviders });
+      }
+
+      // Recompute block-level rollups from the source of truth (never increment/decrement in place).
+      const affectedBlockIds = [...new Set(rows.map((r) => r.block_id).filter((v): v is string => !!v))];
+      for (const bId of affectedBlockIds) {
+        const { count: blCount } = await supabase.from("ip_addresses").select("id", { count: "exact", head: true }).eq("block_id", bId).eq("is_blacklisted", true);
+        const { count: usedCount } = await supabase.from("ip_addresses").select("id", { count: "exact", head: true }).eq("block_id", bId).neq("status", "unassigned");
+        const { data: blockRow } = await supabase.from("ip_blocks").select("usable_ips").eq("id", bId).single();
+        const usable = blockRow?.usable_ips || 0;
+        const pct = usable > 0 ? ((usedCount || 0) / usable) * 100 : 0;
+        const status = (blCount || 0) > 0 || pct >= 90 ? "critical" : pct >= 70 ? "warning" : "healthy";
+        await supabase.from("ip_blocks").update({ blacklisted_count: blCount || 0, assigned_ips: usedCount || 0, status }).eq("id", bId);
+      }
+
+      return new Response(JSON.stringify({ success: true, scanned: scanned.length, results: scanned }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let devices: any[] = [];

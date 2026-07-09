@@ -7,13 +7,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { VersionFooter } from "@/components/dashboard/VersionFooter";
-import { ArrowLeft, Router, Monitor, HardDrive, Radio, Wifi, Cpu, ChevronDown, ChevronRight, Copy, Save, Loader2, Network, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Router, Monitor, HardDrive, Radio, Wifi, Cpu, ChevronDown, ChevronRight, Copy, Save, Loader2, Network, Pencil, Trash2, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { useHostingMode } from "@/hooks/use-hosting-mode";
 import { BulkAddIPsDialog } from "@/components/devices/BulkAddIPsDialog";
 import { EditIPAssignmentDialog } from "@/components/devices/EditIPAssignmentDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 
 const typeIcons: Record<string, any> = {
@@ -21,6 +25,34 @@ const typeIcons: Record<string, any> = {
   Linux_Server: HardDrive, Windows_Server: HardDrive, CPE: Radio,
   Access_Point: Wifi, Other: Cpu,
 };
+
+const snmpCapableTypes = ["MikroTik_Switch", "MikroTik_Router"];
+
+function formatBps(n: number | null | undefined) {
+  if (n == null) return "—";
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)} Gbps`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} Mbps`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)} Kbps`;
+  return `${n} bps`;
+}
+
+function formatUptime(seconds: number | null | undefined) {
+  if (seconds == null) return "—";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+function relativeTime(iso: string | null | undefined) {
+  if (!iso) return "never";
+  const secs = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (secs < 90) return "just now";
+  if (secs < 3600) return `${Math.round(secs / 60)}m ago`;
+  return `${Math.round(secs / 3600)}h ago`;
+}
 
 const DeviceDetail = () => {
   useAutoLogout();
@@ -42,6 +74,9 @@ const DeviceDetail = () => {
   const [editIp, setEditIp] = useState<any | null>(null);
   const [deleteIp, setDeleteIp] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [interfaceMetrics, setInterfaceMetrics] = useState<Record<string, any[]>>({});
+  const [snmpForm, setSnmpForm] = useState({ enabled: false, version: "v2c", community: "", port: "161", managementIp: "" });
+  const [savingSnmp, setSavingSnmp] = useState(false);
 
   const handleDeleteIp = async () => {
     if (!deleteIp) return;
@@ -91,6 +126,13 @@ const DeviceDetail = () => {
     if (devRes.data) {
       setDevice(devRes.data);
       setNocNotes(devRes.data.noc_notes || "");
+      setSnmpForm({
+        enabled: !!devRes.data.snmp_enabled,
+        version: devRes.data.snmp_version || "v2c",
+        community: devRes.data.snmp_community || "",
+        port: String(devRes.data.snmp_port || 161),
+        managementIp: devRes.data.ip_address && devRes.data.ip_address !== "0.0.0.0" ? devRes.data.ip_address : "",
+      });
     }
     setInterfaces(ifRes.data || []);
     setIpAssignments(ipRes.data || []);
@@ -98,7 +140,47 @@ const DeviceDetail = () => {
     setRoutes(routeRes.data || []);
     // Expand all interfaces by default
     if (ifRes.data) setExpandedIfaces(new Set(ifRes.data.map((i: any) => i.id)));
+
+    const ifaceIds = (ifRes.data || []).map((i: any) => i.id);
+    if (ifaceIds.length > 0) {
+      const { data: metrics } = await supabase
+        .from("interface_metrics")
+        .select("interface_id, recorded_at, in_bps, out_bps")
+        .in("interface_id", ifaceIds)
+        .order("recorded_at", { ascending: true })
+        .limit(1000);
+      const grouped: Record<string, any[]> = {};
+      for (const m of metrics || []) {
+        (grouped[m.interface_id] ||= []).push(m);
+      }
+      // Keep only the most recent points per interface for a compact sparkline.
+      for (const key of Object.keys(grouped)) grouped[key] = grouped[key].slice(-20);
+      setInterfaceMetrics(grouped);
+    } else {
+      setInterfaceMetrics({});
+    }
+
     setLoading(false);
+  };
+
+  const saveSnmp = async () => {
+    if (!id) return;
+    if (snmpForm.enabled && !/^\d{1,3}(\.\d{1,3}){3}$/.test(snmpForm.managementIp.trim())) {
+      toast.error("A valid SNMP/management IP is required to enable SNMP monitoring — the collector polls this address directly.");
+      return;
+    }
+    setSavingSnmp(true);
+    const { error } = await supabase.from("devices").update({
+      snmp_enabled: snmpForm.enabled,
+      snmp_version: snmpForm.version,
+      snmp_community: snmpForm.enabled ? (snmpForm.community || null) : null,
+      snmp_port: parseInt(snmpForm.port, 10) || 161,
+      ip_address: snmpForm.enabled ? snmpForm.managementIp.trim() : device.ip_address,
+    }).eq("id", id);
+    setSavingSnmp(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("SNMP settings saved");
+    fetchDevice();
   };
 
   const toggleIface = (ifId: string) => {
@@ -216,6 +298,25 @@ const DeviceDetail = () => {
               ))}
             </div>
 
+            {/* SNMP live stats — populated by the on-prem collector, separate from ping-based uptime above */}
+            {device.snmp_enabled && (
+              <div className="bg-card border border-border rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Activity className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">SNMP Live Status</h3>
+                  <Badge variant="outline" className={cn("text-[10px]", device.snmp_reachable ? "text-success border-success/30 bg-success/10" : "text-destructive border-destructive/30 bg-destructive/10")}>
+                    {device.snmp_reachable ? "Reachable" : "Unreachable"}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div><p className="text-xs text-muted-foreground">CPU Load</p><p className="text-foreground font-semibold">{device.cpu_load_pct != null ? `${device.cpu_load_pct}%` : "—"}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Uptime</p><p className="text-foreground font-semibold">{formatUptime(device.sys_uptime_seconds)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Last Poll</p><p className="text-foreground font-semibold">{relativeTime(device.last_snmp_poll_at)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Ports Up</p><p className="text-foreground font-semibold">{interfaces.filter((i) => i.link_status === "up").length}/{interfaces.length}</p></div>
+                </div>
+              </div>
+            )}
+
             {/* Interfaces & IP Assignments */}
             <div>
               <h2 className="text-lg font-semibold text-foreground mb-3">Network Interfaces</h2>
@@ -233,9 +334,15 @@ const DeviceDetail = () => {
                         <button className="w-full flex items-center justify-between p-3 hover:bg-muted/30 transition" onClick={() => toggleIface(iface.id)}>
                           <div className="flex items-center gap-2">
                             {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                            {device.snmp_enabled && iface.if_index != null && (
+                              <div className={cn("h-2 w-2 rounded-full shrink-0", iface.link_status === "up" ? "bg-success" : iface.link_status === "down" ? "bg-destructive animate-pulse" : "bg-muted-foreground")} title={`Link ${iface.link_status || "unknown"}`} />
+                            )}
                             <span className="font-mono font-semibold text-sm text-foreground">{iface.name}</span>
                             <Badge variant="outline" className="text-[10px]">{iface.type}</Badge>
                             {iface.is_public && <Badge className="text-[10px] bg-primary/20 text-primary border-0">Public</Badge>}
+                            {device.snmp_enabled && iface.if_index != null && (iface.in_bps != null || iface.out_bps != null) && (
+                              <span className="text-[10px] text-muted-foreground font-mono">↓{formatBps(iface.in_bps)} ↑{formatBps(iface.out_bps)}</span>
+                            )}
                           </div>
                           <span className="text-xs text-muted-foreground">{iface.description || ""}</span>
                         </button>
@@ -243,6 +350,35 @@ const DeviceDetail = () => {
                         {expanded && (
                           <div className="px-4 pb-4 space-y-3">
                             {iface.mac_address && <p className="text-xs text-muted-foreground">MAC: {iface.mac_address} {iface.speed ? `| Speed: ${iface.speed}` : ""}</p>}
+
+                            {device.snmp_enabled && iface.if_index != null && (
+                              <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                                <div className="flex items-center justify-between text-xs mb-2">
+                                  <span className="text-muted-foreground">
+                                    Live via SNMP · {iface.speed_mbps ? `${iface.speed_mbps} Mbps` : "speed unknown"} · admin {iface.admin_status || "unknown"} · polled {relativeTime(iface.last_snmp_poll_at)}
+                                  </span>
+                                  <span className="font-mono text-foreground">↓{formatBps(iface.in_bps)} ↑{formatBps(iface.out_bps)}</span>
+                                </div>
+                                {(interfaceMetrics[iface.id]?.length || 0) > 1 && (
+                                  <ResponsiveContainer width="100%" height={40}>
+                                    <AreaChart data={interfaceMetrics[iface.id]}>
+                                      <defs>
+                                        <linearGradient id={`in-${iface.id}`} x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id={`out-${iface.id}`} x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.4} />
+                                          <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                                        </linearGradient>
+                                      </defs>
+                                      <Area type="monotone" dataKey="in_bps" stroke="hsl(var(--primary))" fill={`url(#in-${iface.id})`} strokeWidth={1.5} isAnimationActive={false} />
+                                      <Area type="monotone" dataKey="out_bps" stroke="hsl(var(--accent))" fill={`url(#out-${iface.id})`} strokeWidth={1.5} isAnimationActive={false} />
+                                    </AreaChart>
+                                  </ResponsiveContainer>
+                                )}
+                              </div>
+                            )}
 
                             {ifIPs.length > 0 && (
                               <div className="space-y-2">
@@ -357,6 +493,50 @@ const DeviceDetail = () => {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {/* SNMP Configuration (admin only, switches/routers only) */}
+            {isAdminOrAbove && snmpCapableTypes.includes(device.type) && (
+              <div>
+                <h2 className="text-lg font-semibold text-foreground mb-3">SNMP Monitoring</h2>
+                <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={snmpForm.enabled} onCheckedChange={(v) => setSnmpForm({ ...snmpForm, enabled: v })} />
+                    <span className="text-sm text-foreground">Enabled</span>
+                  </div>
+                  {snmpForm.enabled && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <label className="text-xs text-muted-foreground">SNMP / Management IP *</label>
+                        <Input className="font-mono-ip" placeholder="192.168.1.1" value={snmpForm.managementIp} onChange={(e) => setSnmpForm({ ...snmpForm, managementIp: e.target.value })} />
+                        <p className="text-[10px] text-muted-foreground mt-1">Polled directly by the on-prem SNMP collector — must be reachable from wherever that script runs.</p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Community String *</label>
+                        <Input value={snmpForm.community} onChange={(e) => setSnmpForm({ ...snmpForm, community: e.target.value })} placeholder="public" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">SNMP Version</label>
+                        <Select value={snmpForm.version} onValueChange={(v) => setSnmpForm({ ...snmpForm, version: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="v2c">v2c</SelectItem>
+                            <SelectItem value="v1">v1</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Port</label>
+                        <Input type="number" value={snmpForm.port} onChange={(e) => setSnmpForm({ ...snmpForm, port: e.target.value })} />
+                      </div>
+                    </div>
+                  )}
+                  <Button variant="outline" size="sm" onClick={saveSnmp} disabled={savingSnmp}>
+                    {savingSnmp ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                    Save SNMP Settings
+                  </Button>
                 </div>
               </div>
             )}

@@ -78,10 +78,17 @@ export default function BlacklistMonitor() {
     if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip.trim())) { toast.error("Invalid IP"); return; }
     setChecking(true);
     setResult(null);
-    setTimeout(() => {
-      setChecking(false);
-      setResult(`No live RBL check is wired yet for ${ip.trim()}. Hook the check-ip-reputation edge function here to populate this panel.`);
-    }, 500);
+    const { data, error } = await supabase.functions.invoke("check-ip-reputation", {
+      body: { check_ip: ip.trim() },
+    });
+    setChecking(false);
+    if (error) { setResult(`Check failed: ${error.message}`); return; }
+    if (!data?.listed_count) {
+      setResult(`${ip.trim()} is clean — not listed on any of the checked RBL/reputation providers.`);
+      return;
+    }
+    const providerNames = (data.providers || []).map((p: any) => p.provider).join(", ");
+    setResult(`${ip.trim()} is listed on ${data.listed_count} provider(s): ${providerNames}`);
   };
 
   if (!user) return null;

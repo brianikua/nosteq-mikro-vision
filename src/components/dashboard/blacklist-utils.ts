@@ -1,9 +1,15 @@
 // Severity classification for blacklist providers
 export type Severity = "critical" | "high" | "medium" | "low";
 
-const CRITICAL_CATEGORIES = ["spam", "malware", "botnet", "botnet/exploit", "spam/malware"];
-const HIGH_CATEGORIES = ["brute force", "general abuse", "network abuse", "botnet/proxy"];
-const MEDIUM_CATEGORIES = ["spam/proxy", "proxy/fraud", "reputation"];
+// Keep in sync with the public.abuse_category Postgres enum:
+// 'spam', 'ddos', 'port_scanning', 'botnet', 'malware', 'open_relay',
+// 'brute_force', 'dns_amplification', 'smtp_abuse', 'other'
+// Also accepts the legacy slash-form categories used by the hardcoded
+// per-provider insight map (e.g. "spam/malware", "botnet/exploit") so both
+// the DB-driven and provider-driven callers classify consistently.
+const CRITICAL_CATEGORIES = ["spam", "malware", "botnet", "ddos", "dns_amplification", "botnet/exploit", "spam/malware"];
+const HIGH_CATEGORIES = ["brute_force", "brute force", "smtp_abuse", "open_relay", "general abuse", "network abuse", "botnet/proxy"];
+const MEDIUM_CATEGORIES = ["port_scanning", "spam/proxy", "proxy/fraud", "reputation"];
 
 export const getSeverity = (category: string): Severity => {
   if (CRITICAL_CATEGORIES.includes(category)) return "critical";
@@ -70,6 +76,38 @@ export const REMEDIATION_STEPS: Record<string, string[]> = {
     "Check for compromised CPE devices on that subnet",
     "Submit delisting request",
   ],
+  "ddos": [
+    "Engage upstream/DDoS scrubbing if available",
+    "Rate-limit and null-route the offending source where possible",
+    "Check for compromised CPE participating in the attack",
+    "Submit delisting request",
+    "Monitor for recurrence",
+  ],
+  "port_scanning": [
+    "Enable Port Scan Detection (PSD) on MikroTik",
+    "Rate-limit new connections per subscriber",
+    "Check for compromised CPE devices on that subnet",
+    "Submit delisting request",
+  ],
+  "open_relay": [
+    "Disable SMTP open relay / require authentication",
+    "Block port 25 outbound for non-mail hosts",
+    "Submit delisting request",
+    "Monitor for 48h after delisting",
+  ],
+  "dns_amplification": [
+    "Disable open DNS recursion on affected resolvers",
+    "Rate-limit outbound UDP/53 traffic",
+    "Identify and patch misconfigured DNS servers on the subnet",
+    "Submit delisting request",
+  ],
+  "smtp_abuse": [
+    "Block outbound port 25 for non-mail hosts",
+    "Configure SPF, DKIM, DMARC for mail domains",
+    "Identify customer/device sending abusive mail",
+    "Submit delisting request",
+    "Monitor for 48h after delisting",
+  ],
   "general abuse": [
     "Rate-limit connections (100/min per subscriber)",
     "Enable port scan detection",
@@ -117,6 +155,10 @@ export const REMEDIATION_STEPS: Record<string, string[]> = {
     "No immediate action needed unless affecting deliverability",
   ],
 };
+
+// DB enum uses underscores ("brute_force"); the provider-insight map uses spaces
+// ("brute force"). Normalize so a lookup with either form resolves the same steps.
+REMEDIATION_STEPS["brute_force"] = REMEDIATION_STEPS["brute force"];
 
 export const getRemediationSteps = (category: string): string[] => {
   return REMEDIATION_STEPS[category] || REMEDIATION_STEPS["general abuse"] || [
