@@ -25,26 +25,74 @@ export const IPDetailDrawer = ({ open, onOpenChange, ipAssignment, deviceName, i
   const [downtimeEvents, setDowntimeEvents] = useState<any[]>([]);
   const [blacklistHistory, setBlacklistHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pinging, setPinging] = useState(false);
+  const [checkingBlacklist, setCheckingBlacklist] = useState(false);
+  const [liveIp, setLiveIp] = useState<any>(null);
+
+  const loadHistory = async () => {
+    if (!ipAssignment?.id) return;
+    setLoading(true);
+    const [dtRes, blRes] = await Promise.all([
+      supabase.from("ip_downtime_events").select("*").eq("ip_assignment_id", ipAssignment.id).order("down_at", { ascending: false }).limit(20),
+      supabase.from("blacklist_history").select("*").eq("ip_address", ipAssignment.ip_only || ipAssignment.ip_address?.split("/")[0]).order("listed_at", { ascending: false }).limit(20),
+    ]);
+    setDowntimeEvents(dtRes.data || []);
+    setBlacklistHistory(blRes.data || []);
+    setLoading(false);
+  };
 
   useEffect(() => {
     if (!open || !ipAssignment?.id) return;
-    const load = async () => {
-      setLoading(true);
-      const [dtRes, blRes] = await Promise.all([
-        supabase.from("ip_downtime_events").select("*").eq("ip_assignment_id", ipAssignment.id).order("down_at", { ascending: false }).limit(20),
-        supabase.from("blacklist_history").select("*").eq("ip_address", ipAssignment.ip_only || ipAssignment.ip_address?.split("/")[0]).order("listed_at", { ascending: false }).limit(20),
-      ]);
-      setDowntimeEvents(dtRes.data || []);
-      setBlacklistHistory(blRes.data || []);
-      setLoading(false);
-    };
-    load();
+    setLiveIp(null);
+    loadHistory();
   }, [open, ipAssignment?.id]);
 
   if (!ipAssignment) return null;
 
-  const ip = ipAssignment;
+  const ip = liveIp || ipAssignment;
   const formatDate = (d: string) => new Date(d).toLocaleString("en-KE", { timeZone: "Africa/Nairobi" });
+  const targetIp = ip.ip_only || ip.ip_address?.split("/")[0];
+
+  const pingNow = async () => {
+    setPinging(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ping-device", {
+        body: { ip_address: targetIp, check_ports: [80, 443] },
+      });
+      if (error) throw error;
+      const updated = {
+        last_status: data.reachable ? "up" : "down",
+        last_ping_at: new Date().toISOString(),
+        last_ping_ms: data.reachable ? data.latency_ms : null,
+      };
+      const { error: updateError } = await supabase.from("ip_assignments").update(updated).eq("id", ipAssignment.id);
+      if (updateError) throw updateError;
+      setLiveIp({ ...ip, ...updated });
+      toast.success(data.reachable ? `Reachable — ${data.latency_ms}ms` : "Unreachable");
+    } catch (e: any) {
+      toast.error(e.message || "Ping failed");
+    } finally {
+      setPinging(false);
+    }
+  };
+
+  const runBlacklistCheck = async () => {
+    setCheckingBlacklist(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-ip-reputation", {
+        body: { scan_ip_assignments: true, ip_assignment_id: ipAssignment.id },
+      });
+      if (error) throw error;
+      const count = data?.results?.[0]?.blacklist_count ?? 0;
+      setLiveIp({ ...ip, blacklist_count: count });
+      toast.success(count > 0 ? `Listed on ${count} provider(s)` : "Clean — not listed on any provider");
+      loadHistory();
+    } catch (e: any) {
+      toast.error(e.message || "Blacklist check failed");
+    } finally {
+      setCheckingBlacklist(false);
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -79,8 +127,18 @@ export const IPDetailDrawer = ({ open, onOpenChange, ipAssignment, deviceName, i
 
           {/* Actions */}
           <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" className="text-xs" onClick={() => toast.info("Ping triggered")}>Ping Now</Button>
-            {ip.is_public && <Button size="sm" variant="outline" className="text-xs" onClick={() => toast.info("Blacklist check triggered")}>Run Blacklist Check</Button>}
+            {ip.is_public ? (
+              <Button size="sm" variant="outline" className="text-xs" onClick={pingNow} disabled={pinging}>
+                {pinging ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} Ping Now
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground self-center">Ping unavailable — private IP not reachable from the internet</span>
+            )}
+            {ip.is_public && (
+              <Button size="sm" variant="outline" className="text-xs" onClick={runBlacklistCheck} disabled={checkingBlacklist}>
+                {checkingBlacklist ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} Run Blacklist Check
+              </Button>
+            )}
           </div>
 
           {loading ? (

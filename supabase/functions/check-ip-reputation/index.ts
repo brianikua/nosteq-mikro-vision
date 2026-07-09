@@ -388,6 +388,57 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── ip_assignments blacklist scan (Network Devices inventory) ──
+    // Separate from both branches above: these rows have no device-scoped
+    // blacklist_scans history (that table's device_id is device-inventory-specific
+    // and unrelated to per-IP-assignment tracking) — this only maintains the
+    // blacklist_count snapshot that Dashboard/NetworkHealth/IPIntelligence read.
+    if (body.scan_ip_assignments === true) {
+      let assignmentRows: { id: string; ip_address: string; ip_only: string | null; blacklist_count: number | null }[] = [];
+      if (body.ip_assignment_id) {
+        const { data } = await supabase.from("ip_assignments").select("id, ip_address, ip_only, blacklist_count").eq("id", body.ip_assignment_id).eq("monitor_blacklist", true);
+        assignmentRows = data || [];
+      } else {
+        const { data } = await supabase.from("ip_assignments").select("id, ip_address, ip_only, blacklist_count").eq("monitor_blacklist", true);
+        assignmentRows = data || [];
+      }
+
+      const scanned: any[] = [];
+      for (const row of assignmentRows) {
+        const ipToCheck = row.ip_only || row.ip_address.split("/")[0];
+        const scanResults = await runAllChecks(ipToCheck, { abuseIPDBKey, virusTotalKey, ipqsKey });
+        const listedProviders = scanResults.filter((r) => r.listed).map((r) => r.provider);
+        const wasListed = (row.blacklist_count || 0) > 0;
+        const isNowListed = listedProviders.length > 0;
+
+        await supabase.from("ip_assignments").update({ blacklist_count: listedProviders.length }).eq("id", row.id);
+
+        if (isNowListed && !wasListed && telegramEnabled) {
+          const msg = [
+            `🚨 *BLACKLIST ALERT*`,
+            ``,
+            `📍 IP: \`${escMd(ipToCheck)}\``,
+            `🔴 Newly listed on *${escMd(String(listedProviders.length))}* provider${listedProviders.length > 1 ? "s" : ""}:`,
+            ...listedProviders.map((p) => `  • ${escMd(p)}`),
+          ].join("\n");
+          const sent = await sendTelegram(botToken!, tgConfig!.chat_id, msg);
+          await supabase.from("notification_log").insert({
+            event_type: "ip_blacklisted",
+            ip_address: ipToCheck,
+            message: `Monitored IP ${ipToCheck} newly blacklisted on ${listedProviders.join(", ")}`,
+            success: sent,
+            error_message: sent ? null : "Telegram send failed",
+          });
+        }
+
+        scanned.push({ ip: ipToCheck, blacklist_count: listedProviders.length });
+      }
+
+      return new Response(JSON.stringify({ success: true, scanned: scanned.length, results: scanned }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     let devices: any[] = [];
     if (deviceId) {
       const { data } = await supabase.from("devices").select("id, name, ip_address, notify_number").eq("id", deviceId);

@@ -38,6 +38,7 @@ const NetworkHealth = () => {
 
   // Report state
   const [reportData, setReportData] = useState<any>(null);
+  const [sendingReport, setSendingReport] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -130,6 +131,33 @@ const NetworkHealth = () => {
     notified: "bg-accent/20 text-accent",
     resolved: "bg-success/20 text-success",
     repeat: "bg-destructive/20 text-destructive",
+  };
+
+  const sendReportToTelegram = async () => {
+    if (!reportData) return;
+    setSendingReport(true);
+    const message = [
+      `📊 *NETWORK HEALTH REPORT*`,
+      ``,
+      `🩺 Subnet Health Score: *${reportData.healthScore}*/100`,
+      `📈 Overall Uptime: *${reportData.uptimePct}%*`,
+      `🔻 Downtime Events: *${reportData.downtimeEvents}*`,
+      `🛡 Blacklisted IPs: *${reportData.blacklistedCount}*`,
+      `⚠️ Abuse Reports: *${reportData.abuseCount}* (${reportData.repeatOffenders} repeat offenders)`,
+      `🖥 Devices Monitored: *${reportData.deviceCount}*`,
+    ].join("\n");
+
+    try {
+      const { error } = await supabase.functions.invoke("send-telegram", {
+        body: { message, route_to_channels: true, event_type: "critical" },
+      });
+      if (error) throw error;
+      toast.success("Report sent to Telegram");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to send report");
+    } finally {
+      setSendingReport(false);
+    }
   };
 
   const getHealthColor = (score: number) => score > 80 ? "text-success" : score > 50 ? "text-warning" : "text-destructive";
@@ -259,7 +287,9 @@ const NetworkHealth = () => {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => toast.info("Report sending coming soon")}>Send Report to Telegram</Button>
+                      <Button variant="outline" size="sm" onClick={sendReportToTelegram} disabled={sendingReport}>
+                        {sendingReport ? "Sending…" : "Send Report to Telegram"}
+                      </Button>
                     </div>
                   </div>
                 )}

@@ -405,8 +405,97 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── IP-level uptime monitoring (ip_assignments) ──
+    // Separate from the devices loop above: a single device can have multiple
+    // monitored IPs (WAN, backup uplink, etc.) that need independent up/down
+    // tracking. Only public IPs are probed — check-host.net can't reach
+    // private LAN addresses, same constraint as the SNMP collector.
+    const { data: ipRows, error: ipError } = await supabase
+      .from("ip_assignments")
+      .select("id, device_id, ip_address, ip_only, last_status, consecutive_failures, devices(name)")
+      .eq("monitor_uptime", true)
+      .eq("is_public", true);
+
+    if (ipError) console.error("Failed to fetch ip_assignments:", ipError);
+
+    const ipResults: any[] = [];
+
+    for (const ip of ipRows || []) {
+      const targetIp = ip.ip_only || ip.ip_address.split("/")[0];
+      const deviceName = (ip as any).devices?.name || "Unknown device";
+      const { reachable, latency_ms } = await probeHost(targetIp, [80, 443]);
+
+      const prevStatus = ip.last_status;
+      let newConsecutiveFailures = ip.consecutive_failures || 0;
+      let newStatus = prevStatus;
+
+      if (!reachable) {
+        newConsecutiveFailures++;
+        if (newConsecutiveFailures >= downConfirmCount) newStatus = "down";
+        // Not yet confirmed down — leave last_status as-is, same as the devices loop.
+      } else {
+        newConsecutiveFailures = 0;
+        newStatus = "up";
+      }
+
+      const statusChanged = newStatus !== prevStatus && (newStatus === "up" || newStatus === "down");
+
+      await supabase.from("ip_assignments").update({
+        last_status: newStatus,
+        last_ping_at: new Date().toISOString(),
+        last_ping_ms: reachable ? latency_ms : null,
+        consecutive_failures: newConsecutiveFailures,
+      }).eq("id", ip.id);
+
+      if (statusChanged) {
+        if (newStatus === "down") {
+          await supabase.from("ip_downtime_events").insert({
+            ip_assignment_id: ip.id,
+            device_id: ip.device_id,
+            down_at: new Date().toISOString(),
+          });
+        } else {
+          const { data: openEvent } = await supabase
+            .from("ip_downtime_events")
+            .select("id, down_at")
+            .eq("ip_assignment_id", ip.id)
+            .is("recovered_at", null)
+            .order("down_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (openEvent) {
+            const durationMinutes = Math.round((Date.now() - new Date(openEvent.down_at).getTime()) / 60000);
+            await supabase.from("ip_downtime_events").update({
+              recovered_at: new Date().toISOString(),
+              duration_minutes: durationMinutes,
+            }).eq("id", openEvent.id);
+          }
+        }
+
+        if (telegramEnabled && botToken) {
+          const emoji = newStatus === "down" ? "🔴" : "🟢";
+          const msg = [
+            `${emoji} *${escMd(deviceName)}* IP is now *${escMd(newStatus.toUpperCase())}*`,
+            ``,
+            `📍 IP: \`${escMd(targetIp)}\``,
+            newStatus === "down"
+              ? `⚠️ Failed ${escMd(String(downConfirmCount))} consecutive checks`
+              : `⏱ Latency: ${escMd(String(latency_ms))}ms`,
+          ].join("\n");
+
+          await sendToChannels(supabase, botToken, newStatus === "down" ? "down" : "up", msg, targetIp, deviceName);
+        }
+      }
+
+      ipResults.push({ ip: targetIp, device: deviceName, reachable, status: newStatus, status_changed: statusChanged });
+
+      if (ipRows && ipRows.indexOf(ip) < ipRows.length - 1) {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+
     return new Response(
-      JSON.stringify({ checked: results.length, results }),
+      JSON.stringify({ checked: results.length, results, ip_checked: ipResults.length, ip_results: ipResults }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
