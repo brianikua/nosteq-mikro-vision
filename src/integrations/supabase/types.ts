@@ -629,6 +629,7 @@ export type Database = {
       ip_assignments: {
         Row: {
           blacklist_count: number | null
+          consecutive_failures: number | null
           created_at: string | null
           device_id: string
           id: string
@@ -650,6 +651,7 @@ export type Database = {
         }
         Insert: {
           blacklist_count?: number | null
+          consecutive_failures?: number | null
           created_at?: string | null
           device_id: string
           id?: string
@@ -671,6 +673,7 @@ export type Database = {
         }
         Update: {
           blacklist_count?: number | null
+          consecutive_failures?: number | null
           created_at?: string | null
           device_id?: string
           id?: string
