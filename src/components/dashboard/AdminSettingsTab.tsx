@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Settings2, Timer, Shield, Activity, Save, Loader2, RotateCcw } from "lucide-react";
+import { Settings2, Timer, Shield, Activity, Save, Loader2, RotateCcw, Radar, Plus, Trash2, Lock } from "lucide-react";
+import { isValidCIDR } from "@/lib/ip-utils";
 
 interface SystemSettings {
   default_check_interval: number;
@@ -25,11 +26,58 @@ const defaultSettings: SystemSettings = {
   alert_threshold_packet_loss: 50,
 };
 
+type ScanRange = { id: string; cidr: string; description: string | null; enabled: boolean; last_scanned_at: string | null };
+type VpnSite = { id: string; site_name: string; vpn_gateway_ip: string; vpn_type: string; tunnel_interface: string | null; is_active: boolean | null; last_status: string | null };
+
 export const AdminSettingsTab = () => {
   const [settings, setSettings] = useState<SystemSettings>(defaultSettings);
   const [original, setOriginal] = useState<SystemSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [vpnSites, setVpnSites] = useState<VpnSite[]>([]);
+  const [scanRanges, setScanRanges] = useState<ScanRange[]>([]);
+  const [newRange, setNewRange] = useState({ cidr: "", description: "" });
+  const [addingRange, setAddingRange] = useState(false);
+
+  const fetchScanRanges = async () => {
+    const { data } = await supabase.from("scan_ranges").select("*").order("created_at", { ascending: true });
+    setScanRanges(data || []);
+  };
+
+  const handleAddRange = async () => {
+    if (!isValidCIDR(newRange.cidr.trim())) {
+      toast.error("Enter a valid CIDR, e.g. 192.168.1.0/24");
+      return;
+    }
+    setAddingRange(true);
+    const { error } = await supabase.from("scan_ranges").insert({
+      cidr: newRange.cidr.trim(),
+      description: newRange.description.trim() || null,
+    });
+    setAddingRange(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Scan range added");
+    setNewRange({ cidr: "", description: "" });
+    fetchScanRanges();
+  };
+
+  const handleToggleRange = async (range: ScanRange) => {
+    const { error } = await supabase.from("scan_ranges").update({ enabled: !range.enabled }).eq("id", range.id);
+    if (error) { toast.error("Failed to update"); return; }
+    setScanRanges((rs) => rs.map((r) => (r.id === range.id ? { ...r, enabled: !r.enabled } : r)));
+  };
+
+  const handleDeleteRange = async (id: string) => {
+    if (!confirm("Remove this scan range?")) return;
+    const { error } = await supabase.from("scan_ranges").delete().eq("id", id);
+    if (error) { toast.error("Failed to delete"); return; }
+    setScanRanges((rs) => rs.filter((r) => r.id !== id));
+  };
+
+  const fetchVpnSites = async () => {
+    const { data } = await supabase.from("vpn_sites").select("*").order("site_name");
+    setVpnSites(data || []);
+  };
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -52,7 +100,7 @@ export const AdminSettingsTab = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchSettings(); }, []);
+  useEffect(() => { fetchSettings(); fetchScanRanges(); fetchVpnSites(); }, []);
 
   const hasChanges = JSON.stringify(settings) !== JSON.stringify(original);
 
@@ -202,6 +250,85 @@ export const AdminSettingsTab = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Network Discovery */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Radar className="h-4 w-4 text-accent" /> Network Discovery
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 space-y-4">
+          <p className="text-[11px] text-muted-foreground">
+            The on-prem collector sweeps these ranges and auto-adds whatever it finds — new devices are added and monitoring-enabled immediately, no approval step. SNMP-identified hosts get SNMP monitoring turned on too. Requires <code className="bg-muted px-1 rounded">collector/discover.mjs</code> running on a schedule inside your LAN.
+          </p>
+
+          <div className="flex gap-2 flex-wrap items-end">
+            <div className="space-y-1 flex-1 min-w-[160px]">
+              <Label className="text-xs text-muted-foreground">CIDR range</Label>
+              <Input placeholder="192.168.1.0/24" value={newRange.cidr} onChange={(e) => setNewRange({ ...newRange, cidr: e.target.value })} className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1 flex-1 min-w-[160px]">
+              <Label className="text-xs text-muted-foreground">Description</Label>
+              <Input placeholder="e.g. Core switch VLAN" value={newRange.description} onChange={(e) => setNewRange({ ...newRange, description: e.target.value })} />
+            </div>
+            <Button size="sm" onClick={handleAddRange} disabled={addingRange}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Add
+            </Button>
+          </div>
+
+          {scanRanges.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-3">No scan ranges configured yet.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {scanRanges.map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/50 px-3 py-2 text-xs">
+                  <div className="min-w-0">
+                    <span className="font-mono text-foreground">{r.cidr}</span>
+                    {r.description && <span className="text-muted-foreground ml-2">{r.description}</span>}
+                    <p className="text-[10px] text-muted-foreground">
+                      {r.last_scanned_at ? `Last scanned ${new Date(r.last_scanned_at).toLocaleString("en-KE", { timeZone: "Africa/Nairobi" })}` : "Never scanned yet"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Switch checked={r.enabled} onCheckedChange={() => handleToggleRange(r)} />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteRange(r.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* VPN Sites — configured during onboarding (Setup Wizard, VPN hosting mode) but
+          previously had no page anywhere that displayed them. Read-only reference here;
+          editing still happens wherever the site was originally created. */}
+      {vpnSites.length > 0 && (
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Lock className="h-4 w-4 text-primary" /> VPN Sites
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-1.5">
+            {vpnSites.map((v) => (
+              <div key={v.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/50 px-3 py-2 text-xs">
+                <div className="min-w-0">
+                  <span className="font-medium text-foreground">{v.site_name}</span>
+                  <span className="text-muted-foreground ml-2 font-mono">{v.vpn_gateway_ip}</span>
+                  <span className="text-muted-foreground ml-2">{v.vpn_type}{v.tunnel_interface ? ` · ${v.tunnel_interface}` : ""}</span>
+                </div>
+                <Badge variant={v.is_active ? "default" : "secondary"} className="text-[10px] shrink-0">
+                  {v.is_active ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Info Card */}
       <Card className="bg-primary/5 border-primary/20">

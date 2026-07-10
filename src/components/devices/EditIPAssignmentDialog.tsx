@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { parseIPv4CIDR } from "@/lib/ip-utils";
 
 interface Props {
   open: boolean;
@@ -44,10 +45,10 @@ export const EditIPAssignmentDialog = ({ open, onOpenChange, ip, interfaces, onS
 
   const save = async () => {
     if (!ip) return;
-    const m = ipAddr.trim().match(/^((?:\d{1,3}\.){3}\d{1,3})(?:\/(\d{1,2}))?$/);
-    if (!m) return toast.error("Invalid IP (e.g. 1.2.3.4 or 1.2.3.4/24)");
-    const ip_only = m[1];
-    const prefix_length = m[2] ? parseInt(m[2], 10) : ip.prefix_length;
+    const parsed = parseIPv4CIDR(ipAddr);
+    if (!parsed) return toast.error("Invalid IP (e.g. 1.2.3.4 or 1.2.3.4/24)");
+    const ip_only = parsed.ip;
+    const prefix_length = parsed.prefix ?? ip.prefix_length;
 
     setSaving(true);
     const { error } = await supabase.from("ip_assignments").update({

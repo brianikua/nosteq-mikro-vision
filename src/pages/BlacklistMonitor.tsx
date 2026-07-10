@@ -13,6 +13,7 @@ import { Search, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { toast } from "sonner";
+import { isValidIPv4 } from "@/lib/ip-utils";
 
 type Event = {
   id: string; ip_address: string; rbl_lists: string[] | null;
@@ -75,7 +76,7 @@ export default function BlacklistMonitor() {
   };
 
   const runCheck = async () => {
-    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip.trim())) { toast.error("Invalid IP"); return; }
+    if (!isValidIPv4(ip.trim())) { toast.error("Invalid IP"); return; }
     setChecking(true);
     setResult(null);
     const { data, error } = await supabase.functions.invoke("check-ip-reputation", {

@@ -168,7 +168,12 @@ const Devices = () => {
                             {device.site_name && <p className="text-[11px] text-muted-foreground">📍 {device.site_name}</p>}
                           </div>
                         </div>
-                        <Badge variant="outline" className="text-[10px]">{(device.type || "Other").replace(/_/g, " ")}</Badge>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge variant="outline" className="text-[10px]">{(device.type || "Other").replace(/_/g, " ")}</Badge>
+                          {device.discovery_source === "discovery" && (
+                            <Badge className="text-[9px] bg-accent/20 text-accent border-0">🔍 Discovered</Badge>
+                          )}
+                        </div>
                       </div>
 
                       {device.model && <p className="text-xs text-muted-foreground mb-2">Model: {device.model} {device.os_version ? `| ${device.os_version}` : ""}</p>}

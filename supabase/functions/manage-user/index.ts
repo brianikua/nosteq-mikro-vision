@@ -50,6 +50,21 @@ serve(async (req) => {
         });
       }
 
+      // Security audit CRIT-1: previously any "admin" (not just superadmin)
+      // could pass role: "superadmin" here and mint themselves or anyone
+      // else a superadmin account — full privilege escalation from the
+      // lowest tier that can reach this function at all.
+      if (!["admin", "superadmin", "viewer"].includes(role)) {
+        return new Response(JSON.stringify({ error: "Invalid role" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (role === "superadmin" && !roles.includes("superadmin")) {
+        return new Response(JSON.stringify({ error: "Only a superadmin can grant the superadmin role" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Create user via admin API
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -87,6 +102,18 @@ serve(async (req) => {
         });
       }
 
+      // Security audit CRIT-1: an admin resetting a superadmin's password is
+      // equivalent to taking over that account — same escalation risk as
+      // granting the role directly, so it needs the same guard.
+      if (!roles.includes("superadmin")) {
+        const { data: targetRoles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", user_id);
+        if (targetRoles?.some((r: any) => r.role === "superadmin")) {
+          return new Response(JSON.stringify({ error: "Only a superadmin can reset a superadmin's password" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
         password: new_password,
       });
@@ -115,6 +142,28 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "Only superadmins can delete users" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      // Security audit HIGH-3: nothing previously stopped a superadmin from
+      // deleting their own account, or deleting every other superadmin,
+      // locking the whole org out of user management with no recovery path.
+      if (user_id === caller.id) {
+        return new Response(JSON.stringify({ error: "You cannot delete your own account" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: targetRoles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", user_id);
+      if (targetRoles?.some((r: any) => r.role === "superadmin")) {
+        const { count } = await supabaseAdmin
+          .from("user_roles")
+          .select("*", { count: "exact", head: true })
+          .eq("role", "superadmin");
+        if ((count ?? 0) <= 1) {
+          return new Response(JSON.stringify({ error: "Cannot delete the last remaining superadmin" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       }
 
       const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);

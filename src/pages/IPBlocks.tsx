@@ -15,6 +15,7 @@ import { X, Plus, ScanLine, AlertTriangle, Network, Trash2, Loader2 } from "luci
 import { cn } from "@/lib/utils";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { toast } from "sonner";
+import { isValidIPv4 } from "@/lib/ip-utils";
 
 type Block = {
   id: string; cidr: string; label: string | null; vlan_id: number | null;
@@ -432,7 +433,7 @@ function AddIPDialog({ open, onOpenChange, blockId, onSaved }: { open: boolean; 
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
-    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip.trim())) { toast.error("Invalid IP"); return; }
+    if (!isValidIPv4(ip.trim())) { toast.error("Invalid IP"); return; }
     setSaving(true);
     const { error } = await supabase.from("ip_addresses").insert({
       block_id: blockId, ip_address: ip.trim(), role, status,

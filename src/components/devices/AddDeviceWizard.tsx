@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useHostingMode } from "@/hooks/use-hosting-mode";
+import { isValidIPv4 } from "@/lib/ip-utils";
 
 interface AddDeviceWizardProps {
   open: boolean;
@@ -106,7 +107,7 @@ export function AddDeviceWizard({ open, onOpenChange, onSaved }: AddDeviceWizard
 
   const handleSave = async () => {
     if (!basics.name) { toast.error("Device name is required"); return; }
-    if (snmpActive && !/^\d{1,3}(\.\d{1,3}){3}$/.test(snmp.managementIp.trim())) {
+    if (snmpActive && !isValidIPv4(snmp.managementIp.trim())) {
       toast.error("A valid SNMP/management IP is required when SNMP monitoring is enabled — the collector polls this address directly.");
       return;
     }

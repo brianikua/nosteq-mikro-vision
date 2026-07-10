@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
+import { isValidIPv4 } from "@/lib/ip-utils";
 
 const typeIcons: Record<string, any> = {
   OLT: Router, MikroTik_Router: Router, MikroTik_Switch: Monitor,
@@ -165,7 +166,7 @@ const DeviceDetail = () => {
 
   const saveSnmp = async () => {
     if (!id) return;
-    if (snmpForm.enabled && !/^\d{1,3}(\.\d{1,3}){3}$/.test(snmpForm.managementIp.trim())) {
+    if (snmpForm.enabled && !isValidIPv4(snmpForm.managementIp.trim())) {
       toast.error("A valid SNMP/management IP is required to enable SNMP monitoring — the collector polls this address directly.");
       return;
     }
@@ -257,7 +258,12 @@ const DeviceDetail = () => {
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <Button variant="ghost" size="sm" onClick={() => navigate("/devices")}><ArrowLeft className="h-4 w-4" /></Button>
               <div>
-                <h1 className="text-base font-semibold text-foreground">{device.name}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-semibold text-foreground">{device.name}</h1>
+                  {device.discovery_source === "discovery" && (
+                    <Badge className="text-[9px] bg-accent/20 text-accent border-0">🔍 Discovered</Badge>
+                  )}
+                </div>
                 <p className="text-[11px] text-muted-foreground">{(device.type || "").replace(/_/g, " ")} • {device.site_name || "No site"}</p>
               </div>
             </div>

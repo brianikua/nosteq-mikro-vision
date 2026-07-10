@@ -1,12 +1,13 @@
 {
-  "name": "nosteq-snmp-collector",
-  "version": "1.0.0",
+  "name": "nosteq-network-collector",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "On-prem SNMP poller for LAN MikroTik switches/routers — runs inside the local network and pushes results to the nosteq-mikro-vision Supabase project over HTTPS.",
+  "description": "On-prem SNMP poller and network discovery agent for the nosteq-mikro-vision monitoring system — runs inside the local network and pushes results to Supabase over HTTPS.",
   "main": "index.mjs",
   "scripts": {
-    "start": "node index.mjs"
+    "start": "node index.mjs",
+    "discover": "node discover.mjs"
   },
   "dependencies": {
     "net-snmp": "^3.0.0"

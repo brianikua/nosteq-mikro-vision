@@ -14,41 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      abuse_checklist_progress: {
-        Row: {
-          abuse_report_id: string
-          completed: boolean | null
-          completed_at: string | null
-          completed_by: string | null
-          id: string
-          step_label: string
-        }
-        Insert: {
-          abuse_report_id: string
-          completed?: boolean | null
-          completed_at?: string | null
-          completed_by?: string | null
-          id?: string
-          step_label: string
-        }
-        Update: {
-          abuse_report_id?: string
-          completed?: boolean | null
-          completed_at?: string | null
-          completed_by?: string | null
-          id?: string
-          step_label?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "abuse_checklist_progress_abuse_report_id_fkey"
-            columns: ["abuse_report_id"]
-            isOneToOne: false
-            referencedRelation: "abuse_reports"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       abuse_reports: {
         Row: {
           abuse_type: string
@@ -233,71 +198,6 @@ export type Database = {
           },
         ]
       }
-      device_links: {
-        Row: {
-          created_at: string | null
-          device_a_id: string | null
-          device_b_id: string | null
-          id: string
-          interface_a_id: string | null
-          interface_b_id: string | null
-          link_type: string | null
-          notes: string | null
-          speed: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          device_a_id?: string | null
-          device_b_id?: string | null
-          id?: string
-          interface_a_id?: string | null
-          interface_b_id?: string | null
-          link_type?: string | null
-          notes?: string | null
-          speed?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          device_a_id?: string | null
-          device_b_id?: string | null
-          id?: string
-          interface_a_id?: string | null
-          interface_b_id?: string | null
-          link_type?: string | null
-          notes?: string | null
-          speed?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "device_links_device_a_id_fkey"
-            columns: ["device_a_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_links_device_b_id_fkey"
-            columns: ["device_b_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_links_interface_a_id_fkey"
-            columns: ["interface_a_id"]
-            isOneToOne: false
-            referencedRelation: "interfaces"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_links_interface_b_id_fkey"
-            columns: ["interface_b_id"]
-            isOneToOne: false
-            referencedRelation: "interfaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       devices: {
         Row: {
           added_by: string | null
@@ -306,6 +206,7 @@ export type Database = {
           consecutive_failures: number
           cpu_load_pct: number | null
           created_at: string
+          discovery_source: string
           down_since: string | null
           escalation_sent: boolean
           gps_lat: number | null
@@ -347,6 +248,7 @@ export type Database = {
           consecutive_failures?: number
           cpu_load_pct?: number | null
           created_at?: string
+          discovery_source?: string
           down_since?: string | null
           escalation_sent?: boolean
           gps_lat?: number | null
@@ -388,6 +290,7 @@ export type Database = {
           consecutive_failures?: number
           cpu_load_pct?: number | null
           created_at?: string
+          discovery_source?: string
           down_since?: string | null
           escalation_sent?: boolean
           gps_lat?: number | null
@@ -438,6 +341,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_config: {
+        Row: {
+          created_at: string | null
+          enabled: boolean | null
+          from_address: string
+          id: string
+          notify_blacklisted: boolean | null
+          notify_delisted: boolean | null
+          notify_down: boolean | null
+          notify_summary: boolean | null
+          notify_up: boolean | null
+          smtp_host: string
+          smtp_password: string
+          smtp_port: number
+          smtp_username: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean | null
+          from_address: string
+          id?: string
+          notify_blacklisted?: boolean | null
+          notify_delisted?: boolean | null
+          notify_down?: boolean | null
+          notify_summary?: boolean | null
+          notify_up?: boolean | null
+          smtp_host: string
+          smtp_password: string
+          smtp_port?: number
+          smtp_username: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean | null
+          from_address?: string
+          id?: string
+          notify_blacklisted?: boolean | null
+          notify_delisted?: boolean | null
+          notify_down?: boolean | null
+          notify_summary?: boolean | null
+          notify_up?: boolean | null
+          smtp_host?: string
+          smtp_password?: string
+          smtp_port?: number
+          smtp_username?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       interface_metrics: {
         Row: {
@@ -939,8 +893,10 @@ export type Database = {
           channel_type: string
           chat_id: string
           created_at: string
+          destination: string
           id: string
           is_active: boolean
+          medium: string
           mute_end: string | null
           mute_schedule: string
           mute_start: string | null
@@ -952,8 +908,10 @@ export type Database = {
           channel_type?: string
           chat_id: string
           created_at?: string
+          destination: string
           id?: string
           is_active?: boolean
+          medium?: string
           mute_end?: string | null
           mute_schedule?: string
           mute_start?: string | null
@@ -965,8 +923,10 @@ export type Database = {
           channel_type?: string
           chat_id?: string
           created_at?: string
+          destination?: string
           id?: string
           is_active?: boolean
+          medium?: string
           mute_end?: string | null
           mute_schedule?: string
           mute_start?: string | null
@@ -1125,6 +1085,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scan_ranges: {
+        Row: {
+          cidr: string
+          created_at: string | null
+          description: string | null
+          enabled: boolean | null
+          id: string
+          last_scanned_at: string | null
+        }
+        Insert: {
+          cidr: string
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          id?: string
+          last_scanned_at?: string | null
+        }
+        Update: {
+          cidr?: string
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          id?: string
+          last_scanned_at?: string | null
+        }
+        Relationships: []
       }
       servers: {
         Row: {
@@ -1444,47 +1431,6 @@ export type Database = {
             columns: ["interface_id"]
             isOneToOne: false
             referencedRelation: "interfaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vpn_downtime_events: {
-        Row: {
-          affected_ip_count: number | null
-          created_at: string | null
-          down_at: string
-          duration_minutes: number | null
-          id: string
-          notified: boolean | null
-          recovered_at: string | null
-          vpn_site_id: string | null
-        }
-        Insert: {
-          affected_ip_count?: number | null
-          created_at?: string | null
-          down_at: string
-          duration_minutes?: number | null
-          id?: string
-          notified?: boolean | null
-          recovered_at?: string | null
-          vpn_site_id?: string | null
-        }
-        Update: {
-          affected_ip_count?: number | null
-          created_at?: string | null
-          down_at?: string
-          duration_minutes?: number | null
-          id?: string
-          notified?: boolean | null
-          recovered_at?: string | null
-          vpn_site_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vpn_downtime_events_vpn_site_id_fkey"
-            columns: ["vpn_site_id"]
-            isOneToOne: false
-            referencedRelation: "vpn_sites"
             referencedColumns: ["id"]
           },
         ]

@@ -1,48 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { escMd, routeToChannels } from "../_shared/notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-function escMd(text: string): string {
-  return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, "\\$1");
-}
-
-async function sendTelegram(botToken: string, chatId: string, message: string): Promise<boolean> {
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "MarkdownV2" }),
-    });
-    const data = await res.json();
-    return data.ok === true;
-  } catch {
-    return false;
-  }
-}
-
-async function sendSmsWebhook(config: any, phone: string, message: string): Promise<boolean> {
-  try {
-    let res: Response;
-    if (config.webhook_method === "GET") {
-      const url = new URL(config.webhook_url);
-      url.searchParams.set("phone_number", phone);
-      url.searchParams.set("message", message);
-      res = await fetch(url.toString());
-    } else {
-      res = await fetch(config.webhook_url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone_number: phone, message }),
-      });
-    }
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -50,16 +12,20 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ── Auth: accept project keys (cron) or user JWT ──
+    // ── Auth: accept a dedicated cron secret or service-role key (scheduled
+    // calls), or a real admin/superadmin JWT (manual trigger). Security audit
+    // CRIT-3: the anon key must never satisfy this — it's public, shipped in
+    // every browser bundle, so it was never actually restricting access.
     const authHeader = req.headers.get("Authorization");
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : null;
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const cronToken = Deno.env.get("CRON_TRIGGER_TOKEN");
 
-    if (!bearerToken || (bearerToken !== anonKey && bearerToken !== serviceKey)) {
-      // Try JWT auth for manual triggers
+    const isScheduledCall = bearerToken === serviceKey || (!!cronToken && bearerToken === cronToken);
+
+    if (!isScheduledCall) {
       if (!bearerToken) {
         return new Response(JSON.stringify({ error: "Forbidden" }), {
           status: 403,
@@ -178,11 +144,10 @@ Deno.serve(async (req) => {
 
     const now = new Date().toLocaleString("en-US", { timeZone: "Africa/Nairobi" });
 
-    // ── Send Telegram summary ──
-    const { data: tgConfig } = await supabase.from("telegram_config").select("*").limit(1).maybeSingle();
-    const telegramEnabled = tgConfig?.enabled && tgConfig?.chat_id && botToken && tgConfig?.notify_summary;
-
-    if (telegramEnabled) {
+    // ── Build and route the summary — one message, fanned out to every
+    // Telegram/SMS/email channel subscribed to "summary" alerts. Replaces
+    // this function's own separate Telegram/SMS builders and senders. ──
+    {
       const statusEmoji = devicesDown > 0 ? "🔴" : "🟢";
       const repEmoji = (avgReputation ?? 100) >= 80 ? "🟢" : (avgReputation ?? 100) >= 50 ? "🟡" : "🔴";
 
@@ -225,46 +190,8 @@ Deno.serve(async (req) => {
       }
 
       const msg = lines.filter(Boolean).join("\n");
-      const sent = await sendTelegram(botToken!, tgConfig!.chat_id, msg);
-
-      await supabase.from("notification_log").insert({
-        event_type: "daily_summary",
-        ip_address: "all",
-        message: `Daily summary: ${devicesUp}/${totalDevices} up, ${totalListings} listings, ${newBlacklistings} new`,
-        success: sent,
-        error_message: sent ? null : "Telegram send failed",
-      });
-
-      console.log(`Telegram daily summary sent: ${sent}`);
-    }
-
-    // ── Send SMS summary ──
-    const { data: smsConfig } = await supabase.from("sms_config").select("*").limit(1).maybeSingle();
-    const smsEnabled = smsConfig?.enabled && smsConfig?.webhook_url && smsConfig?.client_number && smsConfig?.notify_summary;
-
-    if (smsEnabled) {
-      const smsMessage = [
-        `📊 DAILY SUMMARY (${now})`,
-        `Devices: ${devicesUp}/${totalDevices} online`,
-        `Reputation: avg ${avgReputation ?? "N/A"}/100`,
-        `Listings: ${totalListings} active`,
-        newBlacklistings > 0 ? `🚨 ${newBlacklistings} NEW blacklistings!` : `✅ No new blacklistings`,
-        totalDelistings > 0 ? `✅ ${totalDelistings} delistings` : "",
-        worstDevice && worstDevice.reputation_score < 80
-          ? `⚠️ Worst: ${worstDevice.name} (${worstDevice.reputation_score}/100)`
-          : "",
-      ].filter(Boolean).join("\n");
-
-      const sent = await sendSmsWebhook(smsConfig, smsConfig.client_number, smsMessage);
-      await supabase.from("notification_log").insert({
-        event_type: "sms_daily_summary",
-        ip_address: "all",
-        message: `SMS daily summary sent to ${smsConfig.client_number}`,
-        success: sent,
-        error_message: sent ? null : "SMS webhook failed",
-      });
-
-      console.log(`SMS daily summary sent: ${sent}`);
+      await routeToChannels(supabase, "summary", msg, "all");
+      console.log(`Daily summary routed: ${devicesUp}/${totalDevices} up, ${totalListings} listings, ${newBlacklistings} new`);
     }
 
     return new Response(
@@ -282,8 +209,6 @@ Deno.serve(async (req) => {
           worst_device: worstDevice ? { name: worstDevice.name, score: worstDevice.reputation_score } : null,
           devices: deviceSummaries,
         },
-        telegram_sent: telegramEnabled,
-        sms_sent: smsEnabled,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -2,26 +2,13 @@
 // Single-shot script: fetch poll targets, SNMP-poll each one, push results, exit.
 // Intended to be run on a schedule (cron / Task Scheduler) from a machine already
 // inside the LAN — Supabase's cloud infrastructure cannot reach private-IP switches.
-import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import snmp from "net-snmp";
+import { loadDotEnv } from "./env.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 loadDotEnv(join(__dirname, ".env"));
-
-function loadDotEnv(path) {
-  if (!existsSync(path)) return;
-  for (const line of readFileSync(path, "utf8").split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) continue;
-    const key = trimmed.slice(0, eq).trim();
-    const value = trimmed.slice(eq + 1).trim();
-    if (!(key in process.env)) process.env[key] = value;
-  }
-}
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SNMP_COLLECTOR_TOKEN = process.env.SNMP_COLLECTOR_TOKEN;

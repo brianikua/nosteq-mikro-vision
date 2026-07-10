@@ -144,10 +144,12 @@ export const SmsSettingsTab = () => {
     }
     setTesting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("send-sms", {
+      const { data, error } = await supabase.functions.invoke("send-notification", {
         body: {
           message: "🧪 Test SMS from Nosteq IP Monitor — notifications are working!",
-          phone_number: numberToTest,
+          medium: "sms",
+          destination: numberToTest,
+          event_type: "test",
         },
       });
       if (error) throw error;

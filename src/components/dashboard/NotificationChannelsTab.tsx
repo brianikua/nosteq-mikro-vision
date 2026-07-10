@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Bot, Plus, Pencil, Trash2, Volume2, VolumeX, TestTube } from "lucide-react";
+import { Loader2, Send, Bot, Plus, Pencil, Trash2, Volume2, VolumeX, TestTube, MessageSquare, Mail, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,11 +23,17 @@ const ALERT_TYPES = [
 ];
 
 const CHANNEL_TYPES = [
-  { value: "personal", label: "Personal Agent" },
+  { value: "personal", label: "Personal" },
   { value: "group", label: "IT Group" },
-  { value: "noc", label: "NOC Channel" },
+  { value: "noc", label: "NOC" },
   { value: "management", label: "Management" },
 ];
+
+const MEDIUMS = [
+  { value: "telegram", label: "Telegram", icon: MessageSquare, placeholder: "-1001234567890", hint: "Numeric chat ID. Use negative IDs for groups/channels." },
+  { value: "sms", label: "SMS", icon: Smartphone, placeholder: "+254712345678", hint: "Phone number in international format." },
+  { value: "email", label: "Email", icon: Mail, placeholder: "noc@example.com", hint: "Recipient email address." },
+] as const;
 
 const MUTE_OPTIONS = [
   { value: "always_active", label: "Always Active" },
@@ -38,7 +44,8 @@ const MUTE_OPTIONS = [
 type Channel = {
   id: string;
   name: string;
-  chat_id: string;
+  medium: "telegram" | "sms" | "email";
+  destination: string;
   channel_type: string;
   alert_types: string[];
   mute_schedule: string;
@@ -49,7 +56,8 @@ type Channel = {
 
 const emptyChannel: Omit<Channel, "id"> = {
   name: "",
-  chat_id: "",
+  medium: "telegram",
+  destination: "",
   channel_type: "personal",
   alert_types: ["down", "up", "blacklisted", "delisted", "summary", "critical"],
   mute_schedule: "always_active",
@@ -58,7 +66,7 @@ const emptyChannel: Omit<Channel, "id"> = {
   is_active: true,
 };
 
-export const TelegramSettingsTab = () => {
+export const NotificationChannelsTab = () => {
   const [loading, setLoading] = useState(true);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [botConfig, setBotConfig] = useState({ id: null as string | null, bot_token: "", enabled: true });
@@ -84,6 +92,8 @@ export const TelegramSettingsTab = () => {
     if (chRes.data) {
       setChannels(chRes.data.map((c: any) => ({
         ...c,
+        medium: c.medium || "telegram",
+        destination: c.destination || c.chat_id,
         alert_types: Array.isArray(c.alert_types) ? c.alert_types : JSON.parse(c.alert_types || "[]"),
       })));
     }
@@ -123,13 +133,15 @@ export const TelegramSettingsTab = () => {
   const handleSaveChannel = async () => {
     if (!editChannel) return;
     if (!editChannel.name.trim()) { toast.error("Channel name is required"); return; }
-    if (!editChannel.chat_id.trim()) { toast.error("Chat ID is required"); return; }
+    if (!editChannel.destination.trim()) { toast.error("Destination is required"); return; }
     if (editChannel.alert_types.length === 0) { toast.error("Select at least one alert type"); return; }
     setSavingChannel(true);
     try {
       const payload = {
         name: editChannel.name.trim(),
-        chat_id: editChannel.chat_id.trim(),
+        medium: editChannel.medium,
+        destination: editChannel.destination.trim(),
+        chat_id: editChannel.destination.trim(), // kept for backward-compat reads of the old column
         channel_type: editChannel.channel_type,
         alert_types: editChannel.alert_types,
         mute_schedule: editChannel.mute_schedule,
@@ -170,14 +182,16 @@ export const TelegramSettingsTab = () => {
   const handleTestChannel = async (ch: Channel) => {
     setTestingId(ch.id);
     try {
-      const { data, error } = await supabase.functions.invoke("send-telegram", {
+      const { data, error } = await supabase.functions.invoke("send-notification", {
         body: {
           message: `🧪 *Test Notification*\n\nNosteq IP Monitor → Channel: ${ch.name}\nType: ${ch.channel_type}\nStatus: Working\\!`,
-          chat_id: ch.chat_id,
+          medium: ch.medium,
+          destination: ch.destination,
+          event_type: "test",
         },
       });
       if (error) throw error;
-      if (data?.success) toast.success(`Test sent to "${ch.name}"!`);
+      if (data?.success) toast.success(`Test sent to "${ch.name}" via ${ch.medium}!`);
       else toast.error(data?.error || "Failed to send test");
     } catch { toast.error("Failed to send test"); }
     finally { setTestingId(null); }
@@ -190,10 +204,12 @@ export const TelegramSettingsTab = () => {
     let success = 0;
     for (const ch of active) {
       try {
-        const { data } = await supabase.functions.invoke("send-telegram", {
+        const { data } = await supabase.functions.invoke("send-notification", {
           body: {
             message: `🧪 *Test All Channels*\n\nNosteq IP Monitor → ${ch.name}\nStatus: Working\\!`,
-            chat_id: ch.chat_id,
+            medium: ch.medium,
+            destination: ch.destination,
+            event_type: "test",
           },
         });
         if (data?.success) success++;
@@ -207,13 +223,15 @@ export const TelegramSettingsTab = () => {
     return <div className="flex items-center justify-center min-h-[200px]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
+  const mediumMeta = (medium: string) => MEDIUMS.find(m => m.value === medium) || MEDIUMS[0];
+
   return (
     <div className="space-y-6">
-      {/* Global Bot Token */}
+      {/* Global Bot Token — Telegram-specific, still needed even though channels are multi-medium */}
       <Card className="border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Telegram Bot Token</CardTitle>
-          <CardDescription>Configure the bot token once — all channels use the same bot.</CardDescription>
+          <CardDescription>Configure the bot token once — all Telegram channels use the same bot. SMS and Email channels don't need this.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-3">
@@ -239,7 +257,7 @@ export const TelegramSettingsTab = () => {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <CardTitle className="flex items-center gap-2"><Send className="h-5 w-5" /> Notification Channels</CardTitle>
-              <CardDescription>Configure multiple recipients with different alert subscriptions and routing.</CardDescription>
+              <CardDescription>Telegram, SMS, or email — each channel picks its own medium, recipients, and which alerts it subscribes to.</CardDescription>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleTestAll} disabled={testingAll}>
@@ -264,7 +282,8 @@ export const TelegramSettingsTab = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Channel Name</TableHead>
-                    <TableHead className="hidden sm:table-cell">Chat ID</TableHead>
+                    <TableHead className="hidden sm:table-cell">Medium</TableHead>
+                    <TableHead className="hidden sm:table-cell">Destination</TableHead>
                     <TableHead className="hidden md:table-cell">Type</TableHead>
                     <TableHead className="hidden lg:table-cell">Alert Types</TableHead>
                     <TableHead>Status</TableHead>
@@ -272,41 +291,48 @@ export const TelegramSettingsTab = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {channels.map(ch => (
-                    <TableRow key={ch.id}>
-                      <TableCell className="font-medium">{ch.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell font-mono text-xs">{ch.chat_id}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="secondary" className="capitalize">{ch.channel_type}</Badge>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <div className="flex flex-wrap gap-1">
-                          {ch.alert_types.slice(0, 3).map(t => (
-                            <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                          ))}
-                          {ch.alert_types.length > 3 && <Badge variant="outline" className="text-xs">+{ch.alert_types.length - 3}</Badge>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={ch.is_active ? "default" : "secondary"} className="cursor-pointer" onClick={() => handleToggleActive(ch)}>
-                          {ch.is_active ? <><Volume2 className="h-3 w-3 mr-1" />Active</> : <><VolumeX className="h-3 w-3 mr-1" />Muted</>}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleTestChannel(ch)} disabled={testingId === ch.id}>
-                            {testingId === ch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditChannel(ch)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteChannel(ch.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {channels.map(ch => {
+                    const meta = mediumMeta(ch.medium);
+                    const Icon = meta.icon;
+                    return (
+                      <TableRow key={ch.id}>
+                        <TableCell className="font-medium">{ch.name}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="outline" className="gap-1"><Icon className="h-3 w-3" />{meta.label}</Badge>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell font-mono text-xs">{ch.destination}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant="secondary" className="capitalize">{ch.channel_type}</Badge>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <div className="flex flex-wrap gap-1">
+                            {ch.alert_types.slice(0, 3).map(t => (
+                              <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                            ))}
+                            {ch.alert_types.length > 3 && <Badge variant="outline" className="text-xs">+{ch.alert_types.length - 3}</Badge>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={ch.is_active ? "default" : "secondary"} className="cursor-pointer" onClick={() => handleToggleActive(ch)}>
+                            {ch.is_active ? <><Volume2 className="h-3 w-3 mr-1" />Active</> : <><VolumeX className="h-3 w-3 mr-1" />Muted</>}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleTestChannel(ch)} disabled={testingId === ch.id}>
+                              {testingId === ch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditChannel(ch)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteChannel(ch.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -327,9 +353,25 @@ export const TelegramSettingsTab = () => {
                 <Input placeholder='e.g. "NOC Group", "IT Agent - John"' value={editChannel.name} onChange={e => setEditChannel({ ...editChannel, name: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Chat ID</Label>
-                <Input placeholder="-1001234567890" value={editChannel.chat_id} onChange={e => setEditChannel({ ...editChannel, chat_id: e.target.value })} />
-                <p className="text-xs text-muted-foreground">Numeric ID. Use negative IDs for groups/channels.</p>
+                <Label>Medium</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {MEDIUMS.map(m => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setEditChannel({ ...editChannel, medium: m.value })}
+                      className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-xs transition ${editChannel.medium === m.value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/30"}`}
+                    >
+                      <m.icon className="h-4 w-4" />
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Destination</Label>
+                <Input placeholder={mediumMeta(editChannel.medium).placeholder} value={editChannel.destination} onChange={e => setEditChannel({ ...editChannel, destination: e.target.value })} />
+                <p className="text-xs text-muted-foreground">{mediumMeta(editChannel.medium).hint}</p>
               </div>
               <div className="space-y-2">
                 <Label>Type</Label>

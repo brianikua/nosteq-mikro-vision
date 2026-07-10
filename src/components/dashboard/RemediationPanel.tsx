@@ -117,12 +117,12 @@ export const RemediationPanel = ({ deviceId, ipAddress, providerInsights }: Prop
     const message = `📋 *DELISTING QUEUE — ${ipAddress}*\n\n${items}\n\n_Total: ${delistQueue.size} providers_`;
 
     try {
-      const { data, error } = await supabase.functions.invoke("send-telegram", {
+      const { data, error } = await supabase.functions.invoke("send-notification", {
         body: { message, route_to_channels: true, event_type: "blacklisted", ip_address: ipAddress },
       });
       if (error) throw error;
-      toast.success("Delisting queue shared to Telegram!");
-    } catch { toast.error("Failed to share to Telegram"); }
+      toast.success("Delisting queue shared to notification channels!");
+    } catch { toast.error("Failed to share delisting queue"); }
   };
 
   if (loading) {
@@ -146,7 +146,7 @@ export const RemediationPanel = ({ deviceId, ipAddress, providerInsights }: Prop
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setDelistQueue(new Set())}>Clear</Button>
                 <Button size="sm" onClick={shareDelistQueueToTelegram}>
-                  <Send className="h-3.5 w-3.5 mr-1" /> Share to Telegram
+                  <Send className="h-3.5 w-3.5 mr-1" /> Share to Channels
                 </Button>
               </div>
             </div>

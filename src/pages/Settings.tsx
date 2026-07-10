@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { VersionFooter } from "@/components/dashboard/VersionFooter";
-import { TelegramSettingsTab } from "@/components/dashboard/TelegramSettingsTab";
+import { NotificationChannelsTab } from "@/components/dashboard/NotificationChannelsTab";
 import { SmsSettingsTab } from "@/components/dashboard/SmsSettingsTab";
+import { EmailSettingsTab } from "@/components/dashboard/EmailSettingsTab";
 import { NotificationLogTab } from "@/components/dashboard/NotificationLogTab";
 import { AdminSettingsTab } from "@/components/dashboard/AdminSettingsTab";
 import { ServerManagement } from "@/components/dashboard/ServerManagement";
@@ -53,30 +54,36 @@ const SettingsPage = () => {
           </header>
 
           <main className="flex-1 p-4 md:p-6 overflow-auto space-y-6 animate-in fade-in duration-200">
-            {/* Card 1: Notifications */}
-            <Card className="border-border/50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle>Notification Configuration</CardTitle>
-                    <CardDescription>Configure Telegram, SMS, and notification channels</CardDescription>
+            {/* Card 1: Notifications — admin/superadmin only. These tabs load live credentials
+                (Telegram bot token, SMS gateway key, SMTP password), so unlike the other cards
+                on this page they must not be reachable by a plain viewer account. */}
+            {isAdminOrAbove && (
+              <Card className="border-border/50">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-primary" />
+                    <div>
+                      <CardTitle>Notification Configuration</CardTitle>
+                      <CardDescription>Configure Telegram, SMS, email, and where each alert routes to</CardDescription>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="telegram" className="space-y-4">
-                  <TabsList className="glass">
-                    <TabsTrigger value="telegram">Telegram</TabsTrigger>
-                    <TabsTrigger value="sms">SMS</TabsTrigger>
-                    <TabsTrigger value="log">Notification Log</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="telegram"><TelegramSettingsTab /></TabsContent>
-                  <TabsContent value="sms"><SmsSettingsTab /></TabsContent>
-                  <TabsContent value="log"><NotificationLogTab /></TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="channels" className="space-y-4">
+                    <TabsList className="glass">
+                      <TabsTrigger value="channels">Channels</TabsTrigger>
+                      <TabsTrigger value="sms">SMS Gateway</TabsTrigger>
+                      <TabsTrigger value="email">Email (SMTP)</TabsTrigger>
+                      <TabsTrigger value="log">Notification Log</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="channels"><NotificationChannelsTab /></TabsContent>
+                    <TabsContent value="sms"><SmsSettingsTab /></TabsContent>
+                    <TabsContent value="email"><EmailSettingsTab /></TabsContent>
+                    <TabsContent value="log"><NotificationLogTab /></TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Card 2: Hosting Mode */}
             <Card className="border-border/50">

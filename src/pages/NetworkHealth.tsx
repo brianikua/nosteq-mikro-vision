@@ -148,7 +148,7 @@ const NetworkHealth = () => {
     ].join("\n");
 
     try {
-      const { error } = await supabase.functions.invoke("send-telegram", {
+      const { error } = await supabase.functions.invoke("send-notification", {
         body: { message, route_to_channels: true, event_type: "critical" },
       });
       if (error) throw error;
@@ -288,7 +288,7 @@ const NetworkHealth = () => {
 
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={sendReportToTelegram} disabled={sendingReport}>
-                        {sendingReport ? "Sending…" : "Send Report to Telegram"}
+                        {sendingReport ? "Sending…" : "Send Report to Notification Channels"}
                       </Button>
                     </div>
                   </div>

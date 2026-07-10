@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { escMd, routeToChannels, sendDirect } from "../_shared/notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,98 +93,12 @@ async function probeHost(ip: string, ports: number[] = [80, 443]): Promise<{ rea
   return { reachable: false, latency_ms: 0, method: "none", open_ports: [] };
 }
 
-function escMd(text: string): string {
-  return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, "\\$1");
-}
-
-async function sendTelegram(botToken: string, chatId: string, message: string): Promise<boolean> {
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "MarkdownV2" }),
-    });
-    const data = await res.json();
-    return data.ok === true;
-  } catch {
-    return false;
-  }
-}
-
-async function sendSmsWebhook(config: any, phone: string, message: string): Promise<boolean> {
-  try {
-    let res: Response;
-    if (config.webhook_method === "GET") {
-      const url = new URL(config.webhook_url);
-      url.searchParams.set("phone_number", phone);
-      url.searchParams.set("message", message);
-      res = await fetch(url.toString());
-    } else {
-      res = await fetch(config.webhook_url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone_number: phone, message }),
-      });
-    }
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 function applyTemplate(template: string, vars: Record<string, string>): string {
   let result = template;
   for (const [key, value] of Object.entries(vars)) {
     result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
   }
   return result;
-}
-
-/**
- * Send alert to matching notification channels
- */
-async function sendToChannels(
-  supabase: any,
-  botToken: string,
-  eventType: string,
-  message: string,
-  ipAddress: string,
-  deviceName: string,
-  channelFilter?: (ch: any) => boolean
-): Promise<void> {
-  const { data: channels } = await supabase
-    .from("notification_channels")
-    .select("*")
-    .eq("is_active", true);
-
-  if (!channels || channels.length === 0) return;
-
-  for (const ch of channels) {
-    // Check alert type subscription
-    const alertTypes = Array.isArray(ch.alert_types) ? ch.alert_types : [];
-    if (!alertTypes.includes(eventType) && !alertTypes.includes("critical")) continue;
-
-    // Apply optional filter (e.g. for escalation only NOC/Management)
-    if (channelFilter && !channelFilter(ch)) continue;
-
-    // Check mute schedule
-    if (ch.mute_schedule === "custom" && ch.mute_start && ch.mute_end) {
-      const now = new Date();
-      const hours = now.getUTCHours() + 3; // EAT = UTC+3
-      const minutes = now.getUTCMinutes();
-      const currentTime = `${String(hours % 24).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-      if (currentTime >= ch.mute_start && currentTime <= ch.mute_end) continue;
-    }
-
-    const sent = await sendTelegram(botToken, ch.chat_id, message);
-    await supabase.from("notification_log").insert({
-      event_type: eventType,
-      ip_address: ipAddress,
-      message: `[${ch.name}] ${deviceName} - ${eventType}`,
-      success: sent,
-      error_message: sent ? null : `Failed to send to channel ${ch.name}`,
-    });
-  }
 }
 
 Deno.serve(async (req) => {
@@ -194,10 +109,13 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : null;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const cronToken = Deno.env.get("CRON_TRIGGER_TOKEN");
 
-    if (!bearerToken || (bearerToken !== anonKey && bearerToken !== serviceKey)) {
+    // Security audit CRIT-3: the anon key is public (shipped in every browser
+    // bundle) and must never satisfy "this is an authorized scheduled call."
+    // Only the service-role key or a dedicated cron secret count.
+    if (!bearerToken || (bearerToken !== serviceKey && bearerToken !== cronToken)) {
       return new Response(
         JSON.stringify({ error: "Forbidden" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -205,7 +123,6 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // Fetch system settings
@@ -221,38 +138,36 @@ Deno.serve(async (req) => {
     // Fetch all devices including escalation tracking fields
     const { data: devices, error: devError } = await supabase
       .from("devices")
-      .select("id, name, ip_address, is_up, check_ports, notify_number, consecutive_failures, down_since, escalation_sent")
+      .select("id, name, ip_address, is_up, check_ports, notify_number, consecutive_failures, down_since, escalation_sent, monitor_enabled")
       .order("name");
 
     if (devError) throw devError;
-    if (!devices || devices.length === 0) {
+    // monitor_enabled defaults to null on rows created before this column
+    // existed — treat null as "monitored" (opt-out, not opt-in) so existing
+    // devices don't silently stop being polled. Only an explicit false skips.
+    const monitoredDevices = (devices || []).filter((d: any) => d.monitor_enabled !== false);
+    if (monitoredDevices.length === 0) {
       return new Response(JSON.stringify({ message: "No devices to monitor" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch Telegram config
-    const { data: tgConfig } = await supabase
-      .from("telegram_config")
-      .select("*")
-      .limit(1)
-      .maybeSingle();
-
-    // Fetch SMS config
+    // Fetch SMS config — still needed here for message templating and the
+    // notify_down/notify_up/notify flags; the actual send mechanics now live
+    // entirely inside send-notification.
     const { data: smsConfig } = await supabase
       .from("sms_config")
       .select("*")
       .limit(1)
       .maybeSingle();
 
-    const telegramEnabled = tgConfig?.enabled && botToken;
-    const smsEnabled = smsConfig?.enabled && smsConfig?.webhook_url && smsConfig?.client_number;
+    const smsEnabled = smsConfig?.enabled;
 
-    console.log(`Cron: Checking ${devices.length} devices, downConfirm=${downConfirmCount}, escalation=${escalationMinutes}min`);
+    console.log(`Cron: Checking ${monitoredDevices.length} devices, downConfirm=${downConfirmCount}, escalation=${escalationMinutes}min`);
 
     const results: any[] = [];
 
-    for (const device of devices) {
+    for (const device of monitoredDevices) {
       const ports = Array.isArray(device.check_ports) && device.check_ports.length > 0
         ? device.check_ports
         : [80, 443];
@@ -307,7 +222,7 @@ Deno.serve(async (req) => {
       }).eq("id", device.id);
 
       // ── Send alerts on confirmed status change ──
-      if (statusChanged && telegramEnabled && botToken) {
+      if (statusChanged) {
         const isDown = !reachable;
         const emoji = isDown ? "🔴" : "🟢";
         const status = isDown ? "DOWN" : "RECOVERED";
@@ -324,11 +239,11 @@ Deno.serve(async (req) => {
           `🔍 Method: ${escMd(method)}`,
         ].filter(Boolean).join("\n");
 
-        await sendToChannels(supabase, botToken, eventType, msg, device.ip_address, device.name);
+        await routeToChannels(supabase, eventType, msg, device.ip_address);
       }
 
       // ── Smart Escalation: check if device has been down too long ──
-      if (finalIsUp === false && downSince && !escalationSent && telegramEnabled && botToken) {
+      if (finalIsUp === false && downSince && !escalationSent) {
         const downDuration = (Date.now() - new Date(downSince).getTime()) / 60000;
         if (downDuration >= escalationMinutes) {
           const escMsg = [
@@ -340,10 +255,7 @@ Deno.serve(async (req) => {
           ].join("\n");
 
           // Send only to NOC and Management channels
-          await sendToChannels(
-            supabase, botToken, "critical", escMsg, device.ip_address, device.name,
-            (ch) => ch.channel_type === "noc" || ch.channel_type === "management"
-          );
+          await routeToChannels(supabase, "critical", escMsg, device.ip_address, ["noc", "management"]);
 
           // Mark escalation as sent
           await supabase.from("devices").update({ escalation_sent: true }).eq("id", device.id);
@@ -351,7 +263,9 @@ Deno.serve(async (req) => {
         }
       }
 
-      // ── SMS alerts on confirmed status change ──
+      // ── Direct-to-customer SMS on confirmed status change ──
+      // (Separate from channel routing above — this notifies the customer
+      // whose device it is, not the ops/NOC channels.)
       if (statusChanged && smsEnabled) {
         const isDown = !reachable;
         const shouldNotify = isDown ? smsConfig.notify_down : smsConfig.notify_up;
@@ -376,14 +290,7 @@ Deno.serve(async (req) => {
 
           for (const smsNumber of deviceNumbers) {
             if (!smsNumber) continue;
-            const sent = await sendSmsWebhook(smsConfig, smsNumber, smsMessage);
-            await supabase.from("notification_log").insert({
-              event_type: isDown ? "sms_ip_down" : "sms_ip_up",
-              ip_address: device.ip_address,
-              message: `SMS to ${smsNumber}: ${device.name} is ${status}`,
-              success: sent,
-              error_message: sent ? null : "SMS webhook failed",
-            });
+            await sendDirect(supabase, "sms", smsNumber, smsMessage, isDown ? "sms_ip_down" : "sms_ip_up", device.ip_address);
           }
         }
       }
@@ -400,7 +307,7 @@ Deno.serve(async (req) => {
         escalation_sent: escalationSent,
       });
 
-      if (devices.indexOf(device) < devices.length - 1) {
+      if (monitoredDevices.indexOf(device) < monitoredDevices.length - 1) {
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
@@ -472,19 +379,17 @@ Deno.serve(async (req) => {
           }
         }
 
-        if (telegramEnabled && botToken) {
-          const emoji = newStatus === "down" ? "🔴" : "🟢";
-          const msg = [
-            `${emoji} *${escMd(deviceName)}* IP is now *${escMd(newStatus.toUpperCase())}*`,
-            ``,
-            `📍 IP: \`${escMd(targetIp)}\``,
-            newStatus === "down"
-              ? `⚠️ Failed ${escMd(String(downConfirmCount))} consecutive checks`
-              : `⏱ Latency: ${escMd(String(latency_ms))}ms`,
-          ].join("\n");
+        const emoji = newStatus === "down" ? "🔴" : "🟢";
+        const msg = [
+          `${emoji} *${escMd(deviceName)}* IP is now *${escMd(newStatus.toUpperCase())}*`,
+          ``,
+          `📍 IP: \`${escMd(targetIp)}\``,
+          newStatus === "down"
+            ? `⚠️ Failed ${escMd(String(downConfirmCount))} consecutive checks`
+            : `⏱ Latency: ${escMd(String(latency_ms))}ms`,
+        ].join("\n");
 
-          await sendToChannels(supabase, botToken, newStatus === "down" ? "down" : "up", msg, targetIp, deviceName);
-        }
+        await routeToChannels(supabase, newStatus === "down" ? "down" : "up", msg, targetIp);
       }
 
       ipResults.push({ ip: targetIp, device: deviceName, reachable, status: newStatus, status_changed: statusChanged });
